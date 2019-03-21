@@ -1,4 +1,4 @@
-package com.ligz.io;
+package com.ligz.io.NIO;
 
 import java.io.IOException;
 import java.net.InetSocketAddress;

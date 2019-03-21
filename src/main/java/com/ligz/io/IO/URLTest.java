@@ -1,4 +1,4 @@
-package com.ligz.io;
+package com.ligz.io.IO;
 
 import java.io.BufferedReader;
 import java.io.IOException;

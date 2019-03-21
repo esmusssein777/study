@@ -1,4 +1,4 @@
-package com.ligz.io;
+package com.ligz.io.fileIO;
 
 import java.io.*;
 
