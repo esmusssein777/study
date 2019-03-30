@@ -46,6 +46,12 @@
       <artifactId>netty-all</artifactId>
       <version>4.1.6.Final</version>
     </dependency>
+    <!-- https://mvnrepository.com/artifact/org.apache.zookeeper/zookeeper -->
+    <dependency>
+      <groupId>org.apache.zookeeper</groupId>
+      <artifactId>zookeeper</artifactId>
+      <version>3.5.4-beta</version>
+    </dependency>
   </dependencies>
 
   <build>
