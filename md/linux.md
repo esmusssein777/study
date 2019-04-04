@@ -35,6 +35,8 @@ mkdir 创建目录  mkdir -p 创建多层空目录   mkdir -m 777 test  创建�
 
 rmdir 删除空的目录  -p 删除上层空目录  -r删除有文件的目录
 
+find . -name "*.o"  | xargs rm -f  递归删除后缀文件
+
 mv 移动
 
 ls 查看  -a 全部文件  -d 目录   -l 全部信息(权限)
