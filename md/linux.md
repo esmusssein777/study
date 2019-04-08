@@ -121,3 +121,8 @@ ps
 -9 表示强迫进程立即停止
 
 通常用 ps 查看进程 PID ，用 kill 命令终止进程
+
+
+### shell命令
+
+![shell的编程](https://github.com/Snailclimb/JavaGuide/blob/master/docs/operating-system/Shell.md)
