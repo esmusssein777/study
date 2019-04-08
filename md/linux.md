@@ -54,6 +54,12 @@ less：和more一样，可以向前翻页
 
 touch 创建文件  find  查找文件
 
+pwd: 显示当前所在位置
+
+grep 要搜索的字符串 要搜索的文件 --color： 搜索命令，--color代表高亮显示
+
+
+
 
 
 
@@ -125,4 +131,5 @@ ps
 
 ### shell命令
 
-![shell的编程](https://github.com/Snailclimb/JavaGuide/blob/master/docs/operating-system/Shell.md)
+[shell的编程](https://github.com/Snailclimb/JavaGuide/blob/master/docs/operating-system/Shell.md)
+
