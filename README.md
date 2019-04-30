@@ -14,3 +14,7 @@
 
 ## 网络
 [什么是servlet](https://blog.csdn.net/skyejy/article/details/78310549)
+
+## 搜索
+### Lucene
+[Lucene 查询原理及解析](https://www.infoq.cn/article/ejEG02VRoeGVaLw4j_LL)
