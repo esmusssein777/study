@@ -39,6 +39,33 @@ XSS是一种经常出现在web应用中的计算机安全漏洞，它允许恶�
 
 ## redis分布式一些方案，挂掉了之后如何
 
+宕机：服务器停止服务
+如果只有一台redis，肯定会造成数据丢失，无法挽救
+多台redis或者是redis集群 ，宕机则需要分为在主从模式下区分来看：
+
+**slave从redis宕机**
+配置主从复制的时候才配置从的redis，从的会从主的redis中读取主的redis的操作日志，求达到主从复制。
+	1）在Redis中从库重新启动后会自动加入到主从架构中，自动完成同步数据；
+	2）如果从数据库实现了持久化，可以直接连接到主的上面，只要实现增量备份（宕机到重新连接过程中，主的数据库发生数据操作，复制到从数据库），重新连接到主从架构中会实现增量同步。
+
+**Master 宕机**
+假如主从都没数据持久化，此时千万不要立马重启服务，否则可能会造成数据丢失，正确的操作如下：
+在slave数据上执行SLAVEOF ON ONE,来断开主从关系并把slave升级为主库
+此时重新启动主数据库，执行SLAVEOF,把它设置为从库，连接到主的redis上面做主从复制，自动备份数据。
+以上过程很容易配置错误，可以使用redis提供的哨兵机制来简化上面的操作。简单的方法：redis的哨兵（sentinel）的功能。
+
+**哨兵（sentinel）的原理**：
+
+![](http://ww1.sinaimg.cn/large/007JYYsTgy1g2o6aoheg9j30q50ewgnx.jpg)
+
+Redis提供了sentinel（哨兵）机制通过sentinel模式启动redis后，自动监控master/slave的运行状态，基本原理是：心跳机制+投票裁决。
+
+每个sentinel会向其它sentinal、master、slave定时发送消息（哨兵定期给主或者从和slave发送ping包（IP：port），正常则响应pong，ping和pong就叫心跳机制），以确认对方是否“活”着，如果发现对方在指定时间（可配置）内未回应，则暂时认为对方已挂（所谓的“主观认为宕机” Subjective Down，简称SDOWN）。
+
+若"哨兵群"中的多数sentinel，都报告某一master没响应，系统才认为该master"彻底死亡"(即：客观上的真正down机，Objective Down，简称ODOWN)，通过一定的vote算法，从剩下的slave节点中，选一台提升为master，然后自动修改相关配置。
+
+[搭建哨兵的Redis](<https://blog.csdn.net/shouhuzhezhishen/article/details/69221517>)的方法
+
 ## http协议的字段和要点
 
 ## 线程上下文切换
