@@ -68,6 +68,16 @@ Redis提供了sentinel（哨兵）机制通过sentinel模式启动redis后，自
 
 ## http协议的字段和要点
 
+4种类型的首部字段：通用的首部字段、请求首部、响应首部、实体首部字段
+
+通用的首部字段名：Cache-Control（控制缓存）
+
+请求首部：Host（服务器所在）
+
+响应首部：ETag(资源的匹配信息)
+
+实体首部：Content-Length、Content-Type(实体主体的大小和类型)、Expires
+
 ## 线程上下文切换
 
 什么是CPU上下文：
