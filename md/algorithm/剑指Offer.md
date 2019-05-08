@@ -36,7 +36,7 @@
 
 
 
-### 4. 重建二叉树
+### 4. 重建二叉树*
 
 输入某二叉树的前序遍历和中序遍历的结果，请重建出该二叉树。假设输入的前序遍历和中序遍历的结果中都不含重复的数字。例如输入前序遍历序列{1,2,4,7,3,5,6,8}和中序遍历序列{4,7,2,1,5,3,8,6}，则重建二叉树并返回。
 
@@ -135,7 +135,7 @@
 
 
 
-### 10. 矩形覆盖
+### 10. 矩形覆盖*
 
 我们可以用2*1的小矩形横着或者竖着去覆盖更大的矩形。请问用n个2*1的小矩形无重叠地覆盖一个2*n的大矩形，总共有多少种方法？
 
@@ -231,7 +231,7 @@ double pow = Power(base * base, exponent / 2);
 
 
 
-### 17. 树的子结构
+### 17. 树的子结构*
 
 输入两棵二叉树A，B，判断B是不是A的子结构。（ps：我们约定空树不是任意一个树的子结构）
 
@@ -330,7 +330,7 @@ double pow = Power(base * base, exponent / 2);
 
 
 
-### 23. 二叉搜索树的后序遍历序列
+### 23. 二叉搜索树的后序遍历序列*
 
 输入一个整数数组，判断该数组是不是某二叉搜索树的后序遍历的结果。如果是则输出Yes,否则输出No。假设输入的数组的任意两个数字都互不相同。
 
@@ -357,7 +357,7 @@ private boolean verify(int[] seq, int left, int right) {
 
 
 
-### 24. 二叉树中和为某一值的路径
+### 24. 二叉树中和为某一值的路径*
 
 输入一颗二叉树的跟节点和一个整数，打印出二叉树中结点值的和为输入整数的所有路径。路径定义为从树的根结点开始往下一直到叶结点所经过的结点形成一条路径。(注意: 在返回值的list中，数组长度大的数组靠前)
 
@@ -395,9 +395,96 @@ private boolean verify(int[] seq, int left, int right) {
 
 
 
-### 26. 二叉搜索树与双向链表
+### 26.  二叉搜索树与双向链表*
 
 输入一棵二叉搜索树，将该二叉搜索树转换成一个排序的双向链表。要求不能创建任何新的结点，只能调整树中结点指针的指向
 
+**思路**
+
+首先看到这种的话想到中序遍历，这样的话会是一个递增的链表
+
+中间再把每个的left和right指好
+
+    private TreeNode pre;
+    private TreeNode head;//只用一次
+    public TreeNode Convert(TreeNode pRootOfTree) {
+        inOrder(pRootOfTree);
+        return head;
+    }
+    
+    private void inOrder(TreeNode root) {
+        if (root == null) return;
+        inOrder(root.left);
+        root.left = pre;
+        if (pre != null) pre.right = root;
+        pre = root;
+        if (head == null) head = pre;
+        inOrder(root.right);
+    }
+
+
+### 27. 字符串的排列*
+
+输入一个字符串,按字典序打印出该字符串中字符的所有排列。例如输入字符串abc,则打印出由字符a,b,c所能排列出来的所有字符串abc,acb,bac,bca,cab和cba。
+
+**思路**
+
+这道题看似简单的一批，没写出来。。。
+
+关键的代码如下
+
+    private void print(char[] ch, int i) {
+        if (ch.length - 1 == i) {
+            String str = String.valueOf(ch);
+            if (!list.contains(str)) list.add(str);
+        } else {
+            for (int j = i; j < ch.length; j++) {
+                swap(ch, i, j);
+                print(ch, i + 1);
+                swap(ch, i, j);
+            }
+        }
+    }
+
+
+### 28. 数组中出现次数超过一半的数字
+
+数组中有一个数字出现的次数超过数组长度的一半，请找出这个数字。例如输入一个长度为9的数组{1,2,3,2,2,2,5,4,2}。由于数字2在数组中出现了5次，超过数组长度的一半，因此输出2。如果不存在则输出0。
+
+**思路**
+
+简单，摩尔投票法
+
+不过只能找出数组中出现最多的数字，是否超过一半还需要再遍历一遍看看个数是否超过一半
+
+
+
+### 29. 最小的K个数
+
+输入n个整数，找出其中最小的K个数。例如输入4,5,1,6,2,7,3,8这8个数字，则最小的4个数字是1,2,3,4,
+
+**思路**
+
+简单，用最大堆来放置，最后在堆里面的就是
+
+
+
+### 30. 连续子数组的最大和*
+
+例如:{6,-3,-2,7,-15,1,2,2},连续子向量的最大和为8(从第0个开始,到第3个为止)。给一个数组，返回它的最大连续子序列的和，你会不会被他忽悠住？(子向量的长度至少是1)
+
+**思路**
+
+很难想得到，当前面的和小于 0 的时候，从新的值开始算
+
+    public int FindGreatestSumOfSubArray(int[] array) {
+        int max = Integer.MIN_VALUE;
+        int res = 0;
+        for (int num : array) {
+            res = res < 0 ? num : res + num;
+            max = Math.max(max, res);
+        }
+        return max;
+    }
 
 
