@@ -5,7 +5,7 @@
 ## Java
 ### 基础
 [ClassLoader——自定义类加载器](https://blog.csdn.net/SEU_Calvin/article/details/52315125)
-[深入理解Java内存模型(JMM)](https://mp.weixin.qq.com/s/rkxcqZCvCnC0Psr0_oJzbQ)
+[深入理解Java内存模型-JMM](https://mp.weixin.qq.com/s/rkxcqZCvCnC0Psr0_oJzbQ)
 
 ## Web框架
 ### Spirng
