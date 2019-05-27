@@ -24,3 +24,7 @@
 ## 搜索
 ### Lucene
 [Lucene 查询原理及解析](https://www.infoq.cn/article/ejEG02VRoeGVaLw4j_LL)
+
+
+## 架构设计
+[如何设计一个抽奖](https://juejin.im/post/5ce1975af265da1bd42450b5)
