@@ -1,6 +1,6 @@
 # study
 自己实现一源码，比如spring的简单 ioc 和 aop，还有一些自己的思考
-[toc]
+[TOC]
 
 ## Java
 ### 基础
@@ -21,6 +21,8 @@
 ## 网络
 [什么是servlet](https://blog.csdn.net/skyejy/article/details/78310549)
 
+[正向代理与反向代理](<https://www.cnblogs.com/Anker/p/6056540.html>)
+
 ## 搜索
 ### Lucene
 [Lucene 查询原理及解析](https://www.infoq.cn/article/ejEG02VRoeGVaLw4j_LL)
@@ -28,3 +30,9 @@
 
 ## 架构设计
 [如何设计一个抽奖](https://juejin.im/post/5ce1975af265da1bd42450b5)
+
+## 前端
+
+### Vue
+
+[Vue官方中文文档](<https://cn.vuejs.org/>)
