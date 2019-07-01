@@ -4,7 +4,11 @@
 
 我们一般用外部资源来描述 Bean 对象，所以在初始化 IoC 容器的第一步就是需要定位这个外部资源。
 
-比如我们常用的xml就是用来描述 Bean 对象的，我们需要定位到`<bean>`标签才能解析。
+比如我们常用的xml就是用来描述 Bean 对象的，我们需要定位到`<bean>`标签才能解析。而从XML到 Resource 需要经过哪些呢。
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/XML2Resource.png?raw=true)
+
+xml文件的位置 —> ResourceLoader —> Resource的过程。
 
 我们先看一下这个过程所需要用到的类是哪些
 
@@ -14,7 +18,7 @@
 
 
 
-* Spring 将资源定义成 Resource，由 ResourceLoader 来加载。过程举个例子就是  xml 文件 —> ResourceLoader —> Resource的流程。
+* Spring 将资源定义成 Resource，由 ResourceLoader 来加载。过程举个例子就是  xml 文件的位置 —> ResourceLoader —> Resource的流程。
 
 * Resource 接口的默认实现是 AbstractResource  ，是一个抽象骨架类，它对 Resource 接口做了一个统一的实现。
 * ResourceLoader 接口的默认实现是 DefaultResourceLoader ，在自定义 ResourceLoader 的时候我们除了可以继承该类外还可以实现 ProtocolResolver 接口来实现自定资源加载协议。
@@ -558,7 +562,7 @@ public abstract class AbstractResource implements Resource {
 
 再看前面的这段话
 
-- Spring 将资源定义成 Resource，由 ResourceLoader 来加载。过程举个例子就是  xml 文件 —> ResourceLoader —> Resource的流程。
+- Spring 将资源定义成 Resource，由 ResourceLoader 来加载。过程举个例子就是  xml 文件的位置 —> ResourceLoader —> Resource的流程。
 
 - Resource 接口的默认实现是 AbstractResource  ，是一个抽象骨架类，它对 Resource 接口做了一个统一的实现。
 - ResourceLoader 接口的默认实现是 DefaultResourceLoader ，在自定义 ResourceLoader 的时候我们除了可以继承该类外还可以实现 ProtocolResolver 接口来实现自定资源加载协议。
