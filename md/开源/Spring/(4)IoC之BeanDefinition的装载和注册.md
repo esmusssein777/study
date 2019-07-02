@@ -1,4 +1,4 @@
-# IoC的第二步—BeanDefinition的装载和注册
+# IoC的第二步—BeanDefinition的加载和注册
 
 [TOC]
 
