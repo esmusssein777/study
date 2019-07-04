@@ -1,4 +1,4 @@
-# IoC的第二步—BeanDefinition的加载和注册
+# IoC的第二步—BeanDefinition的加载
 
 [TOC]
 
@@ -423,7 +423,7 @@ int count = registerBeanDefinitions(doc, resource);
 
 我们仔细的看下具体代码
 
-```
+```java
 	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
 		// 创建 BeanDefinitionDocumentReader 对象
 		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
