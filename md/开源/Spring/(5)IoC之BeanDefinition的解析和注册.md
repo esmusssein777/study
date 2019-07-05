@@ -149,6 +149,10 @@ Spring 有两种配置方法
 
 下面我们针对这不同的两种情况分别的做分析。
 
+在分析前看下我们走到那里了
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/ParseBeanDefinitions.png?raw=true)
+
 ### 解析默认文件声明
 
 下面是 `parseDefaultElement(ele, delegate);`的具体代码
@@ -359,6 +363,10 @@ Spring 有两种配置方法
 其中就是校验 name 和 alias 标签，不同的情况执行不同的逻辑
 
 最后注册进去 `this.aliasMap.put(alias, name);`
+
+在看解析最重要的 `<bean>` 标签前，我们先开看看到了哪一步了
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/ProcessBeanDefinition.png?raw=true)
 
 #### 3. 解析 bean 标签(重要)
 
@@ -1370,13 +1378,17 @@ public void registerAlias(String name, String alias) {
 
 这么多的解析，我们需要来小结一下，否则不知道自己已经走到哪里了。
 
-我们从起始开始分析，一开始我们是从Document解析，如果是默认的文件声明，那么开始解析— >解析 import 标签 —> 解析 alias标签 —> 解析 bean标签，分析 bean 默认标签的解析过程，包括 基本属性、`meta`、`lookup-method`、`replaced-method`、`constructor-arg`、`property`、`qualifier`这些默认的标签。解析完这些默认的标签后进行 decorateBeanDefinitionIfRequired 解析自定义的 bean 标签。解析完自定义的后开始注册 bean
+先来看一张稍微完整的图吧
 
-关于从 Document 到 
+![](https://github.com/esmusssein777/study/blob/master/md/picture/BeanDefinition.png?raw=true)
 
+我们从起始开始分析，一开始我们是从Document解析，如果是默认的文件声明，那么开始解析— >解析 import 标签 —> 解析 alias标签 —> 解析 bean标签，分析 bean 默认标签的解析过程，包括 基本属性、`meta`、`lookup-method`、`replaced-method`、`constructor-arg`、`property`、`qualifier`这些默认的标签。解析完这些默认的标签后进行 decorateBeanDefinitionIfRequired 解析自定义的 bean 标签。解析完自定义的后开始注册 BeanDefinition 到一个 Map中，完成了我们需要的任务。
 
+我们结合前面的图来看一看
 
+![](https://github.com/esmusssein777/study/blob/master/md/picture/XML2BeanDefinition.png?raw=true)
 
+可以看到从 xml 配置文件的位置开始，我们做了哪些任务把它变成 BeanDefinition 并且注入到Spring里面去，可以让我们初始化成Bean。
 
 ## 自定义的配置解析(可以不看)
 
