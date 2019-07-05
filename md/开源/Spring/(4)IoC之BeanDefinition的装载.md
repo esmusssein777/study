@@ -87,53 +87,53 @@ public interface BeanDefinitionReader {
 可以看到这个也是一个接口，和我们之前看到的 Resource 很像，它也有一个默认的实现类，也是一个抽象骨架类 AbstractBeanDefinitionReader。我们去查看这个抽象骨架类默认实现了哪些方法。
 
 ```java
-	#AbstractBeanDefinitionReader.class
-	
-	public int loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources) throws BeanDefinitionStoreException {
-		// 获得 ResourceLoader 对象
-		ResourceLoader resourceLoader = getResourceLoader();
-		if (resourceLoader == null) {
-			throw new BeanDefinitionStoreException(
-					"Cannot load bean definitions from location [" + location + "]: no ResourceLoader available");
-		}
+#AbstractBeanDefinitionReader.class
 
-		if (resourceLoader instanceof ResourcePatternResolver) {
-			// Resource pattern matching available.
-			try {
-				// 获得 Resource 数组，因为 Pattern 模式匹配下，可能有多个 Resource 。例如说，Ant 风格的 location
-				Resource[] resources = ((ResourcePatternResolver) resourceLoader).getResources(location);
-				// 加载 BeanDefinition 们
-				int count = loadBeanDefinitions(resources);
-				if (actualResources != null) {
-					// 添加到 actualResources 中
-					Collections.addAll(actualResources, resources);
-				}
-				if (logger.isTraceEnabled()) {
-					logger.trace("Loaded " + count + " bean definitions from location pattern [" + location + "]");
-				}
-				return count;
-			}
-			catch (IOException ex) {
-				throw new BeanDefinitionStoreException(
-						"Could not resolve bean definition resource pattern [" + location + "]", ex);
-			}
-		}
-		else {
-			// Can only load single resources by absolute URL.
-			// 获得 Resource 对象
-			Resource resource = resourceLoader.getResource(location);
-			// 加载 BeanDefinition 们
-			int count = loadBeanDefinitions(resource);
-			// 添加到 actualResources 中
-			if (actualResources != null) {
-				actualResources.add(resource);
-			}
-			if (logger.isTraceEnabled()) {
-				logger.trace("Loaded " + count + " bean definitions from location [" + location + "]");
-			}
-			return count;
-		}
-	}
+public int loadBeanDefinitions(String location, @Nullable Set<Resource> actualResources) throws BeanDefinitionStoreException {
+    // 获得 ResourceLoader 对象
+    ResourceLoader resourceLoader = getResourceLoader();
+    if (resourceLoader == null) {
+        throw new BeanDefinitionStoreException(
+                "Cannot load bean definitions from location [" + location + "]: no ResourceLoader available");
+    }
+
+    if (resourceLoader instanceof ResourcePatternResolver) {
+        // Resource pattern matching available.
+        try {
+            // 获得 Resource 数组，因为 Pattern 模式匹配下，可能有多个 Resource 。例如说，Ant 风格的 location
+            Resource[] resources = ((ResourcePatternResolver) resourceLoader).getResources(location);
+            // 加载 BeanDefinition 们
+            int count = loadBeanDefinitions(resources);
+            if (actualResources != null) {
+                // 添加到 actualResources 中
+                Collections.addAll(actualResources, resources);
+            }
+            if (logger.isTraceEnabled()) {
+                logger.trace("Loaded " + count + " bean definitions from location pattern [" + location + "]");
+            }
+            return count;
+        }
+        catch (IOException ex) {
+            throw new BeanDefinitionStoreException(
+                    "Could not resolve bean definition resource pattern [" + location + "]", ex);
+        }
+    }
+    else {
+        // Can only load single resources by absolute URL.
+        // 获得 Resource 对象
+        Resource resource = resourceLoader.getResource(location);
+        // 加载 BeanDefinition 们
+        int count = loadBeanDefinitions(resource);
+        // 添加到 actualResources 中
+        if (actualResources != null) {
+            actualResources.add(resource);
+        }
+        if (logger.isTraceEnabled()) {
+            logger.trace("Loaded " + count + " bean definitions from location [" + location + "]");
+        }
+        return count;
+    }
+}
 ```
 
 结果发现 AbstractBeanDefinitionReader 只实现了 loadBeanDefinitions(String location) 这么个方法。而我们需要的 loadBeanDefinitions(Resource resource) 方法却没有看到。说明这个方法还在 AbstractBeanDefinitionReader  的子类实现。
@@ -144,62 +144,62 @@ public interface BeanDefinitionReader {
 
 ```java
 /**
-	 * 当前线程，正在加载的 EncodedResource 集合。
-	 */
-	private final ThreadLocal<Set<EncodedResource>> resourcesCurrentlyBeingLoaded =
-			new NamedThreadLocal<>("XML bean definition resources currently being loaded");
-			
-	@Override
-	public int loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
-		return loadBeanDefinitions(new EncodedResource(resource));
-	}
+ * 当前线程，正在加载的 EncodedResource 集合。
+ */
+private final ThreadLocal<Set<EncodedResource>> resourcesCurrentlyBeingLoaded =
+        new NamedThreadLocal<>("XML bean definition resources currently being loaded");
+        
+@Override
+public int loadBeanDefinitions(Resource resource) throws BeanDefinitionStoreException {
+    return loadBeanDefinitions(new EncodedResource(resource));
+}
 
-	/**
-	 * 从 XML 文件加载 bean definitions
-	 */
-	public int loadBeanDefinitions(EncodedResource encodedResource) throws BeanDefinitionStoreException {
-		Assert.notNull(encodedResource, "EncodedResource must not be null");
-		if (logger.isTraceEnabled()) {
-			logger.trace("Loading XML bean definitions from " + encodedResource);
-		}
-		// 获取已经加载过的资源
-		Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get();
-		if (currentResources == null) {
-			currentResources = new HashSet<>(4);
-			this.resourcesCurrentlyBeingLoaded.set(currentResources);
-		}
-		if (!currentResources.add(encodedResource)) {
-			// 将当前资源加入记录中。如果已存在，抛出异常
-			throw new BeanDefinitionStoreException(
-					"Detected cyclic loading of " + encodedResource + " - check your import definitions!");
-		}
-		try {
-			// 从 EncodedResource 获取封装的 Resource ，并从 Resource 中获取其中的 InputStream
-			InputStream inputStream = encodedResource.getResource().getInputStream();
-			try {
-				InputSource inputSource = new InputSource(inputStream);
-				if (encodedResource.getEncoding() != null) {// 设置编码
-					inputSource.setEncoding(encodedResource.getEncoding());
-				}
-				// 核心逻辑部分，执行加载 BeanDefinition
-				return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
-			}
-			finally {
-				inputStream.close();
-			}
-		}
-		catch (IOException ex) {
-			throw new BeanDefinitionStoreException(
-					"IOException parsing XML document from " + encodedResource.getResource(), ex);
-		}
-		finally {
-			// 从缓存中剔除该资源
-			currentResources.remove(encodedResource);
-			if (currentResources.isEmpty()) {
-				this.resourcesCurrentlyBeingLoaded.remove();
-			}
-		}
-	}		
+/**
+ * 从 XML 文件加载 bean definitions
+ */
+public int loadBeanDefinitions(EncodedResource encodedResource) throws BeanDefinitionStoreException {
+    Assert.notNull(encodedResource, "EncodedResource must not be null");
+    if (logger.isTraceEnabled()) {
+        logger.trace("Loading XML bean definitions from " + encodedResource);
+    }
+    // 获取已经加载过的资源
+    Set<EncodedResource> currentResources = this.resourcesCurrentlyBeingLoaded.get();
+    if (currentResources == null) {
+        currentResources = new HashSet<>(4);
+        this.resourcesCurrentlyBeingLoaded.set(currentResources);
+    }
+    if (!currentResources.add(encodedResource)) {
+        // 将当前资源加入记录中。如果已存在，抛出异常
+        throw new BeanDefinitionStoreException(
+                "Detected cyclic loading of " + encodedResource + " - check your import definitions!");
+    }
+    try {
+        // 从 EncodedResource 获取封装的 Resource ，并从 Resource 中获取其中的 InputStream
+        InputStream inputStream = encodedResource.getResource().getInputStream();
+        try {
+            InputSource inputSource = new InputSource(inputStream);
+            if (encodedResource.getEncoding() != null) {// 设置编码
+                inputSource.setEncoding(encodedResource.getEncoding());
+            }
+            // 核心逻辑部分，执行加载 BeanDefinition
+            return doLoadBeanDefinitions(inputSource, encodedResource.getResource());
+        }
+        finally {
+            inputStream.close();
+        }
+    }
+    catch (IOException ex) {
+        throw new BeanDefinitionStoreException(
+                "IOException parsing XML document from " + encodedResource.getResource(), ex);
+    }
+    finally {
+        // 从缓存中剔除该资源
+        currentResources.remove(encodedResource);
+        if (currentResources.isEmpty()) {
+            this.resourcesCurrentlyBeingLoaded.remove();
+        }
+    }
+}		
 ```
 
 从过程来看，资源经历了从 Resource —> EncodedResource —> InputStream —> InputSource —> doLoadBeanDefinitions(inputSource, encodedResource.getResource())这么多复杂的过程。
@@ -209,47 +209,47 @@ public interface BeanDefinitionReader {
 然后，再调用 `#loadBeanDefinitions(EncodedResource encodedResource)` 方法，执行真正的逻辑实现
 
 ```java
-	protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
-			throws BeanDefinitionStoreException {
+protected int doLoadBeanDefinitions(InputSource inputSource, Resource resource)
+        throws BeanDefinitionStoreException {
 
-		try {
-			/**
-			 * 1. 获取 XML Document 实例
-			 * 调用 #getValidationModeForResource(Resource resource) 方法，获取指定资源（xml）的验证模式
-			 * 调用 DocumentLoader#loadDocument方法，获取 XML Document 实例
-			 */
-			Document doc = doLoadDocument(inputSource, resource);
-			// 2. 根据 Document 实例，注册 Bean 信息
-			int count = registerBeanDefinitions(doc, resource);
-			if (logger.isDebugEnabled()) {
-				logger.debug("Loaded " + count + " bean definitions from " + resource);
-			}
-			return count;
-		}
-		catch (BeanDefinitionStoreException ex) {
-			throw ex;
-		}
-		catch (SAXParseException ex) {
-			throw new XmlBeanDefinitionStoreException(resource.getDescription(),
-					"Line " + ex.getLineNumber() + " in XML document from " + resource + " is invalid", ex);
-		}
-		catch (SAXException ex) {
-			throw new XmlBeanDefinitionStoreException(resource.getDescription(),
-					"XML document from " + resource + " is invalid", ex);
-		}
-		catch (ParserConfigurationException ex) {
-			throw new BeanDefinitionStoreException(resource.getDescription(),
-					"Parser configuration exception parsing XML from " + resource, ex);
-		}
-		catch (IOException ex) {
-			throw new BeanDefinitionStoreException(resource.getDescription(),
-					"IOException parsing XML document from " + resource, ex);
-		}
-		catch (Throwable ex) {
-			throw new BeanDefinitionStoreException(resource.getDescription(),
-					"Unexpected exception parsing XML document from " + resource, ex);
-		}
-	}
+    try {
+        /**
+         * 1. 获取 XML Document 实例
+         * 调用 #getValidationModeForResource(Resource resource) 方法，获取指定资源（xml）的验证模式
+         * 调用 DocumentLoader#loadDocument方法，获取 XML Document 实例
+         */
+        Document doc = doLoadDocument(inputSource, resource);
+        // 2. 根据 Document 实例，注册 Bean 信息
+        int count = registerBeanDefinitions(doc, resource);
+        if (logger.isDebugEnabled()) {
+            logger.debug("Loaded " + count + " bean definitions from " + resource);
+        }
+        return count;
+    }
+    catch (BeanDefinitionStoreException ex) {
+        throw ex;
+    }
+    catch (SAXParseException ex) {
+        throw new XmlBeanDefinitionStoreException(resource.getDescription(),
+                "Line " + ex.getLineNumber() + " in XML document from " + resource + " is invalid", ex);
+    }
+    catch (SAXException ex) {
+        throw new XmlBeanDefinitionStoreException(resource.getDescription(),
+                "XML document from " + resource + " is invalid", ex);
+    }
+    catch (ParserConfigurationException ex) {
+        throw new BeanDefinitionStoreException(resource.getDescription(),
+                "Parser configuration exception parsing XML from " + resource, ex);
+    }
+    catch (IOException ex) {
+        throw new BeanDefinitionStoreException(resource.getDescription(),
+                "IOException parsing XML document from " + resource, ex);
+    }
+    catch (Throwable ex) {
+        throw new BeanDefinitionStoreException(resource.getDescription(),
+                "Unexpected exception parsing XML document from " + resource, ex);
+    }
+}
 ```
 
 到了这一步，我们终于看到我们之前获得的 Resource 的用处了。
@@ -268,10 +268,10 @@ Resource  通过 doLoadDocument(inputSource, resource) 获得 Document。
 我们看看 doLoadDocument 的具体实现
 
 ```java
-	protected Document doLoadDocument(InputSource inputSource, Resource resource) throws Exception {
-		return this.documentLoader.loadDocument(inputSource, getEntityResolver(), this.errorHandler,
-				getValidationModeForResource(resource), isNamespaceAware());
-	}
+protected Document doLoadDocument(InputSource inputSource, Resource resource) throws Exception {
+    return this.documentLoader.loadDocument(inputSource, getEntityResolver(), this.errorHandler,
+            getValidationModeForResource(resource), isNamespaceAware());
+}
 ```
 
 1. 先调用 `#getValidationModeForResource(Resource resource)` 方法，获取指定资源（xml）的验证模式
@@ -326,68 +326,68 @@ public interface DocumentLoader {
 
 ```java
 @Override
-	public Document loadDocument(InputSource inputSource, EntityResolver entityResolver,
-			ErrorHandler errorHandler, int validationMode, boolean namespaceAware) throws Exception {
-		// 创建 DocumentBuilderFactory
-		DocumentBuilderFactory factory = createDocumentBuilderFactory(validationMode, namespaceAware);
-		if (logger.isTraceEnabled()) {
-			logger.trace("Using JAXP provider [" + factory.getClass().getName() + "]");
-		}
-		// 创建 DocumentBuilder
-		DocumentBuilder builder = createDocumentBuilder(factory, entityResolver, errorHandler);
-		// 解析 XML InputSource 返回 Document 对象
-		return builder.parse(inputSource);
-	}
+public Document loadDocument(InputSource inputSource, EntityResolver entityResolver,
+        ErrorHandler errorHandler, int validationMode, boolean namespaceAware) throws Exception {
+    // 创建 DocumentBuilderFactory
+    DocumentBuilderFactory factory = createDocumentBuilderFactory(validationMode, namespaceAware);
+    if (logger.isTraceEnabled()) {
+        logger.trace("Using JAXP provider [" + factory.getClass().getName() + "]");
+    }
+    // 创建 DocumentBuilder
+    DocumentBuilder builder = createDocumentBuilder(factory, entityResolver, errorHandler);
+    // 解析 XML InputSource 返回 Document 对象
+    return builder.parse(inputSource);
+}
 
-	/**
-	 * 创建 DocumentBuilderFactory
-	 */
-	protected DocumentBuilderFactory createDocumentBuilderFactory(int validationMode, boolean namespaceAware)
-			throws ParserConfigurationException {
-		// 创建 DocumentBuilderFactory
-		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		// 设置命名空间支持
-		factory.setNamespaceAware(namespaceAware);
+/**
+ * 创建 DocumentBuilderFactory
+ */
+protected DocumentBuilderFactory createDocumentBuilderFactory(int validationMode, boolean namespaceAware)
+        throws ParserConfigurationException {
+    // 创建 DocumentBuilderFactory
+    DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
+    // 设置命名空间支持
+    factory.setNamespaceAware(namespaceAware);
 
-		if (validationMode != XmlValidationModeDetector.VALIDATION_NONE) {
-			factory.setValidating(true);//开启校验
-			//XSD模式下，设置factory的属性
-			if (validationMode == XmlValidationModeDetector.VALIDATION_XSD) {
-				// XSD 模式下，强制设置命名空间支持
-				factory.setNamespaceAware(true);
-				try {// 设置 SCHEMA_LANGUAGE_ATTRIBUTE
-					factory.setAttribute(SCHEMA_LANGUAGE_ATTRIBUTE, XSD_SCHEMA_LANGUAGE);
-				}
-				catch (IllegalArgumentException ex) {
-					ParserConfigurationException pcex = new ParserConfigurationException(
-							"Unable to validate using XSD: Your JAXP provider [" + factory +
-							"] does not support XML Schema. Are you running on Java 1.4 with Apache Crimson? " +
-							"Upgrade to Apache Xerces (or Java 1.5) for full XSD support.");
-					pcex.initCause(ex);
-					throw pcex;
-				}
-			}
-		}
+    if (validationMode != XmlValidationModeDetector.VALIDATION_NONE) {
+        factory.setValidating(true);//开启校验
+        //XSD模式下，设置factory的属性
+        if (validationMode == XmlValidationModeDetector.VALIDATION_XSD) {
+            // XSD 模式下，强制设置命名空间支持
+            factory.setNamespaceAware(true);
+            try {// 设置 SCHEMA_LANGUAGE_ATTRIBUTE
+                factory.setAttribute(SCHEMA_LANGUAGE_ATTRIBUTE, XSD_SCHEMA_LANGUAGE);
+            }
+            catch (IllegalArgumentException ex) {
+                ParserConfigurationException pcex = new ParserConfigurationException(
+                        "Unable to validate using XSD: Your JAXP provider [" + factory +
+                        "] does not support XML Schema. Are you running on Java 1.4 with Apache Crimson? " +
+                        "Upgrade to Apache Xerces (or Java 1.5) for full XSD support.");
+                pcex.initCause(ex);
+                throw pcex;
+            }
+        }
+    }
 
-		return factory;
-	}
+    return factory;
+}
 
-	/**
-	 * 创建 DocumentBuilder
-	 */
-	protected DocumentBuilder createDocumentBuilder(DocumentBuilderFactory factory,
-			@Nullable EntityResolver entityResolver, @Nullable ErrorHandler errorHandler)
-			throws ParserConfigurationException {
-		// 创建 DocumentBuilder 对象
-		DocumentBuilder docBuilder = factory.newDocumentBuilder();
-		if (entityResolver != null) {// <x> 设置 EntityResolver 属性
-			docBuilder.setEntityResolver(entityResolver);
-		}
-		if (errorHandler != null) {// 设置 ErrorHandler 属性
-			docBuilder.setErrorHandler(errorHandler);
-		}
-		return docBuilder;
-	}
+/**
+ * 创建 DocumentBuilder
+ */
+protected DocumentBuilder createDocumentBuilder(DocumentBuilderFactory factory,
+        @Nullable EntityResolver entityResolver, @Nullable ErrorHandler errorHandler)
+        throws ParserConfigurationException {
+    // 创建 DocumentBuilder 对象
+    DocumentBuilder docBuilder = factory.newDocumentBuilder();
+    if (entityResolver != null) {// <x> 设置 EntityResolver 属性
+        docBuilder.setEntityResolver(entityResolver);
+    }
+    if (errorHandler != null) {// 设置 ErrorHandler 属性
+        docBuilder.setErrorHandler(errorHandler);
+    }
+    return docBuilder;
+}
 ```
 
 具体过程
@@ -424,17 +424,17 @@ int count = registerBeanDefinitions(doc, resource);
 我们仔细的看下具体代码
 
 ```java
-	public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
-		// 创建 BeanDefinitionDocumentReader 对象
-		BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
-		// 获取已注册的 BeanDefinition 数量
-		int countBefore = getRegistry().getBeanDefinitionCount();
-		// 创建 XmlReaderContext 对象
-		// 注册 BeanDefinition
-		documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
-		// 计算新注册的 BeanDefinition 数量
-		return getRegistry().getBeanDefinitionCount() - countBefore;
-	}
+public int registerBeanDefinitions(Document doc, Resource resource) throws BeanDefinitionStoreException {
+    // 创建 BeanDefinitionDocumentReader 对象
+    BeanDefinitionDocumentReader documentReader = createBeanDefinitionDocumentReader();
+    // 获取已注册的 BeanDefinition 数量
+    int countBefore = getRegistry().getBeanDefinitionCount();
+    // 创建 XmlReaderContext 对象
+    // 注册 BeanDefinition
+    documentReader.registerBeanDefinitions(doc, createReaderContext(resource));
+    // 计算新注册的 BeanDefinition 数量
+    return getRegistry().getBeanDefinitionCount() - countBefore;
+}
 ```
 
 1. BeanDefinitionDocumentReader 用来从给定的 Document 对象中解析定义的 BeanDefinition 并将他们注册到注册表中。createBeanDefinitionDocumentReader() 创建默认的 BeanDefinitionDocumentReader 

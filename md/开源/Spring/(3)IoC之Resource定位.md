@@ -75,35 +75,35 @@ public interface ResourceLoader {
 	 * （因为，它的两个子类都没有提供覆盖该方法，
 	 *  所以可以断定 ResourceLoader 的资源加载策略就封装在 DefaultResourceLoader 中)
 	 */
-	@Override
-	public Resource getResource(String location) {
-		Assert.notNull(location, "Location must not be null");
-		// 首先，通过 ProtocolResolver 来加载资源
-		for (ProtocolResolver protocolResolver : this.protocolResolvers) {
-			Resource resource = protocolResolver.resolve(location, this);
-			if (resource != null) {
-				return resource;
-			}
-		}
+@Override
+public Resource getResource(String location) {
+    Assert.notNull(location, "Location must not be null");
+    // 首先，通过 ProtocolResolver 来加载资源
+    for (ProtocolResolver protocolResolver : this.protocolResolvers) {
+        Resource resource = protocolResolver.resolve(location, this);
+        if (resource != null) {
+            return resource;
+        }
+    }
 
-		// 其次，以 / 开头，返回 ClassPathContextResource 类型的资源
-		if (location.startsWith("/")) {
-			return getResourceByPath(location);
-		}// 再次，以 classpath: 开头，返回 ClassPathResource 类型的资源
-		else if (location.startsWith(CLASSPATH_URL_PREFIX)) {
-			return new ClassPathResource(location.substring(CLASSPATH_URL_PREFIX.length()), getClassLoader());
-		}// 然后，根据是否为文件 URL ，是则返回 FileUrlResource 类型的资源，否则返回 UrlResource 类型的资源
-		else {
-			try {
-				URL url = new URL(location);
-				return (ResourceUtils.isFileURL(url) ? new FileUrlResource(url) : new UrlResource(url));
-			}
-			catch (MalformedURLException ex) {
-				// 最后，返回 ClassPathContextResource 类型的资源
-				return getResourceByPath(location);
-			}
-		}
-	}
+    // 其次，以 / 开头，返回 ClassPathContextResource 类型的资源
+    if (location.startsWith("/")) {
+        return getResourceByPath(location);
+    }// 再次，以 classpath: 开头，返回 ClassPathResource 类型的资源
+    else if (location.startsWith(CLASSPATH_URL_PREFIX)) {
+        return new ClassPathResource(location.substring(CLASSPATH_URL_PREFIX.length()), getClassLoader());
+    }// 然后，根据是否为文件 URL ，是则返回 FileUrlResource 类型的资源，否则返回 UrlResource 类型的资源
+    else {
+        try {
+            URL url = new URL(location);
+            return (ResourceUtils.isFileURL(url) ? new FileUrlResource(url) : new UrlResource(url));
+        }
+        catch (MalformedURLException ex) {
+            // 最后，返回 ClassPathContextResource 类型的资源
+            return getResourceByPath(location);
+        }
+    }
+}
 ```
 
 如果觉得很抽象，我们看下他解析的都是哪些路径。参考[《Spring 揭秘》] 
@@ -180,84 +180,84 @@ public interface ResourcePatternResolver extends ResourceLoader {
 加载多个 Resource 的实现
 
 ```java
-	/**
-	 * 非 "classpath*:" 开头，且路径不包含通配符，直接委托给相应的 ResourceLoader 来实现。
-	 * 其他情况，调用 #findAllClassPathResources(...)、或 #findPathMatchingResources(...) 方法
-	 * 返回多个 Resource
-	 */
-	@Override
-	public Resource[] getResources(String locationPattern) throws IOException {
-		Assert.notNull(locationPattern, "Location pattern must not be null");
-		// 以 "classpath*:" 开头
-		if (locationPattern.startsWith(CLASSPATH_ALL_URL_PREFIX)) {
-			// a class path resource (multiple resources for same name possible)
-			// 路径包含通配符
-			if (getPathMatcher().isPattern(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()))) {
-				// a class path resource pattern
-				return findPathMatchingResources(locationPattern);
-			}
-			else {// 路径不包含通配符
-				// all class path resources with the given name
-				return findAllClassPathResources(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()));
-			}
-		}
-		else {// 不以 "classpath*:" 开头
-			// 通常只在这里的前缀后面查找模式
-			// 而在 Tomcat 上只有在 “*/ ”分隔符之后才为其 “war:” 协议
-			int prefixEnd = (locationPattern.startsWith("war:") ? locationPattern.indexOf("*/") + 1 :
-					locationPattern.indexOf(':') + 1);
-			// 路径包含通配符
-			if (getPathMatcher().isPattern(locationPattern.substring(prefixEnd))) {
-				// a file pattern
-				return findPathMatchingResources(locationPattern);
-			}
-			else {
-				// a single resource with the given name
-				return new Resource[] {getResourceLoader().getResource(locationPattern)};
-			}
-		}
-	}
+/**
+ * 非 "classpath*:" 开头，且路径不包含通配符，直接委托给相应的 ResourceLoader 来实现。
+ * 其他情况，调用 #findAllClassPathResources(...)、或 #findPathMatchingResources(...) 方法
+ * 返回多个 Resource
+ */
+@Override
+public Resource[] getResources(String locationPattern) throws IOException {
+    Assert.notNull(locationPattern, "Location pattern must not be null");
+    // 以 "classpath*:" 开头
+    if (locationPattern.startsWith(CLASSPATH_ALL_URL_PREFIX)) {
+        // a class path resource (multiple resources for same name possible)
+        // 路径包含通配符
+        if (getPathMatcher().isPattern(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()))) {
+            // a class path resource pattern
+            return findPathMatchingResources(locationPattern);
+        }
+        else {// 路径不包含通配符
+            // all class path resources with the given name
+            return findAllClassPathResources(locationPattern.substring(CLASSPATH_ALL_URL_PREFIX.length()));
+        }
+    }
+    else {// 不以 "classpath*:" 开头
+        // 通常只在这里的前缀后面查找模式
+        // 而在 Tomcat 上只有在 “*/ ”分隔符之后才为其 “war:” 协议
+        int prefixEnd = (locationPattern.startsWith("war:") ? locationPattern.indexOf("*/") + 1 :
+                locationPattern.indexOf(':') + 1);
+        // 路径包含通配符
+        if (getPathMatcher().isPattern(locationPattern.substring(prefixEnd))) {
+            // a file pattern
+            return findPathMatchingResources(locationPattern);
+        }
+        else {
+            // a single resource with the given name
+            return new Resource[] {getResourceLoader().getResource(locationPattern)};
+        }
+    }
+}
 
-	/**
-	 * 当 locationPattern 以 "classpath*:" 开头但是不包含通配符
-	 * 则调用 #findAllClassPathResources(...) 方法加载资源。
-	 * 该方法返回 classes 路径下和所有 jar 包中的所有相匹配的资源
-	 */
-	protected Resource[] findAllClassPathResources(String location) throws IOException {
-		String path = location;
-		if (path.startsWith("/")) {
-			path = path.substring(1);
-		}
-		// 真正执行加载所有 classpath 资源
-		Set<Resource> result = doFindAllClassPathResources(path);
-		if (logger.isTraceEnabled()) {
-			logger.trace("Resolved classpath location [" + location + "] to resources " + result);
-		}
-		// 转换成 Resource 数组返回
-		return result.toArray(new Resource[0]);
-	}
+/**
+ * 当 locationPattern 以 "classpath*:" 开头但是不包含通配符
+ * 则调用 #findAllClassPathResources(...) 方法加载资源。
+ * 该方法返回 classes 路径下和所有 jar 包中的所有相匹配的资源
+ */
+protected Resource[] findAllClassPathResources(String location) throws IOException {
+    String path = location;
+    if (path.startsWith("/")) {
+        path = path.substring(1);
+    }
+    // 真正执行加载所有 classpath 资源
+    Set<Resource> result = doFindAllClassPathResources(path);
+    if (logger.isTraceEnabled()) {
+        logger.trace("Resolved classpath location [" + location + "] to resources " + result);
+    }
+    // 转换成 Resource 数组返回
+    return result.toArray(new Resource[0]);
+}
 
-	/**
-	 * 真正执行加载所有 classpath 资源
-	 */
-	protected Set<Resource> doFindAllClassPathResources(String path) throws IOException {
-		Set<Resource> result = new LinkedHashSet<>(16);
-		ClassLoader cl = getClassLoader();
-		// 根据 ClassLoader 加载路径下的所有资源
-		Enumeration<URL> resourceUrls = (cl != null ? cl.getResources(path) : ClassLoader.getSystemResources(path));
-		while (resourceUrls.hasMoreElements()) {
-			// 将 URL 转换成 UrlResource
-			URL url = resourceUrls.nextElement();
-			result.add(convertClassLoaderURL(url));
-		}
-		if ("".equals(path)) {
-			// The above result is likely to be incomplete, i.e. only containing file system references.
-			// We need to have pointers to each of the jar files on the classpath as well...
-			// 加载路径下得所有 jar 包
-			addAllClassLoaderJarRoots(cl, result);
-		}
-		return result;
-	}
+/**
+ * 真正执行加载所有 classpath 资源
+ */
+protected Set<Resource> doFindAllClassPathResources(String path) throws IOException {
+    Set<Resource> result = new LinkedHashSet<>(16);
+    ClassLoader cl = getClassLoader();
+    // 根据 ClassLoader 加载路径下的所有资源
+    Enumeration<URL> resourceUrls = (cl != null ? cl.getResources(path) : ClassLoader.getSystemResources(path));
+    while (resourceUrls.hasMoreElements()) {
+        // 将 URL 转换成 UrlResource
+        URL url = resourceUrls.nextElement();
+        result.add(convertClassLoaderURL(url));
+    }
+    if ("".equals(path)) {
+        // The above result is likely to be incomplete, i.e. only containing file system references.
+        // We need to have pointers to each of the jar files on the classpath as well...
+        // 加载路径下得所有 jar 包
+        addAllClassLoaderJarRoots(cl, result);
+    }
+    return result;
+}
 ```
 
 ## 资源
