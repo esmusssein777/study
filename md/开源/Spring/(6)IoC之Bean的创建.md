@@ -2,6 +2,8 @@
 
 [TOC]
 
+## 前言
+
 在前面我们做了那么那么多的工作，我们终于将 BeanDefinition 给注册了，回顾一下我们前面的工作
 
 ![](https://github.com/esmusssein777/study/blob/master/md/picture/XML2BeanDefinition.png?raw=true)
@@ -592,7 +594,381 @@ private final Map<String, Object> factoryBeanObjectCache = new ConcurrentHashMap
 
 我们后面就会讲到。
 
+### 3. 缓存中没有 bean
+
+#### 3.1 检测原型模式
+
+在缓存中尝试获取了 Bean 之后，继续往后面走
+
+```
+			// AbstractBeanFactory.java
+			//检测
+			if (isPrototypeCurrentlyInCreation(beanName)) {
+				//因为 Spring 只解决单例模式下得循环依赖，在原型模式下如果存在循环依赖则会抛出异常。
+				throw new BeanCurrentlyInCreationException(beanName);
+			}
+```
+
+仔细看这个方法 isPrototypeCurrentlyInCreation(beanName)
+
+```
+			
+				private final ThreadLocal<Object> prototypesCurrentlyInCreation =
+			new NamedThreadLocal<>("Prototype beans currently in creation");
+			
+            protected boolean isPrototypeCurrentlyInCreation(String beanName) {
+		Object curVal = this.prototypesCurrentlyInCreation.get();
+		return (curVal != null &&
+				(curVal.equals(beanName) || (curVal instanceof Set && ((Set<?>) curVal).contains(beanName))));
+	}
+```
+
+这个方法是检测这个 `beanName` 是否处于原型模式下的循环依赖。检查的方法就是将它放入 ThreadLocal 里面，这个 ThreadLocal  放着正在创建的 Bean，只不过它不是一个全局的 Set，而是一个 ThreadLocal,原型模式 prototype 的定义是每次通过Spring容器获取prototype定义的bean时，容器都将创建一个新的Bean实例。所以需要的是 ThreadLocal 。
+
+#### 3.2. parentBeanFactory从父类容器中加载
+
+如果从单例模式没有获取 bean 则尝试从父类 beanFactory 中获取。
+
+```
+			// 如果容器中没有找到，则从父类容器中加载
+			BeanFactory parentBeanFactory = getParentBeanFactory();
+			// parentBeanFactory 不为空且 beanDefinitionMap 中不存该 name 的 BeanDefinition
+			if (parentBeanFactory != null && !containsBeanDefinition(beanName)) {
+				// 确定原始 beanName
+				String nameToLookup = originalBeanName(name);
+				// 如果，父类容器为 AbstractBeanFactory ，直接递归查找
+				if (parentBeanFactory instanceof AbstractBeanFactory) {
+					return ((AbstractBeanFactory) parentBeanFactory).doGetBean(
+							nameToLookup, requiredType, args, typeCheckOnly);
+				}
+				// 委托给构造函数 getBean() 处理
+				else if (args != null) {
+					// Delegation to parent with explicit args.
+					return (T) parentBeanFactory.getBean(nameToLookup, args);
+				}
+				// 没有 args，委托给标准的 getBean() 处理
+				else if (requiredType != null) {
+					return parentBeanFactory.getBean(nameToLookup, requiredType);
+				}
+				else {
+					return (T) parentBeanFactory.getBean(nameToLookup);
+				}
+			}
+```
+
+若 parentBeanFactory 不为空且 beanDefinitionMap 中不存该 name 的 BeanDefinition，则从 `parentBeanFactory` 中获取
+
+#### 3.3 类型检查
+
+继续向下
+
+```
+			if (!typeCheckOnly) {
+				// 如果不是仅仅做类型检查则是创建bean，这里需要记录
+				markBeanAsCreated(beanName);
+			}
+```
+
+如果不是仅仅做类型检查，而是创建 Bean 对象，则需要调用 `#markBeanAsCreated(String beanName)` 方法，进行记录。
+
+```
+// AbstractBeanFactory.java
+
+/**
+ *  已创建 Bean 的名字集合
+ */
+private final Set<String> alreadyCreated = Collections.newSetFromMap(new ConcurrentHashMap<>(256));
+
+protected void markBeanAsCreated(String beanName) {
+    // 没有创建
+    if (!this.alreadyCreated.contains(beanName)) {
+        // 加上全局锁
+        synchronized (this.mergedBeanDefinitions) {
+            // 再次检查一次：DCL 双检查模式
+            if (!this.alreadyCreated.contains(beanName)) {
+                // 从 mergedBeanDefinitions 中删除 beanName，并在下次访问时重新创建它。
+                clearMergedBeanDefinition(beanName);
+                // 添加到已创建 bean 集合中
+                this.alreadyCreated.add(beanName);
+            }
+        }
+    }
+}
+
+protected void clearMergedBeanDefinition(String beanName) {
+    this.mergedBeanDefinitions.remove(beanName);
+}
+```
+
+#### 3.4 获取 RootBeanDefinition
+
+```
+// AbstractBeanFactory.java
+
+// 从容器中获取 beanName 相应的 GenericBeanDefinition 对象，并将其转换为 RootBeanDefinition 对象
+final RootBeanDefinition mbd = getMergedLocalBeanDefinition(beanName);
+// 检查给定的合并的 BeanDefinition
+checkMergedBeanDefinition(mbd, beanName, args);
+```
+
+调用 `#getMergedLocalBeanDefinition(String beanName)` 方法，获取相对应的 BeanDefinition 对象
+
+```
+// AbstractBeanFactory.java
+
+/** Map from bean name to merged RootBeanDefinition. */
+private final Map<String, RootBeanDefinition> mergedBeanDefinitions = new ConcurrentHashMap<>(256);
+
+protected RootBeanDefinition getMergedLocalBeanDefinition(String beanName) throws BeansException {
+    // 快速从缓存中获取，如果不为空，则直接返回
+    RootBeanDefinition mbd = this.mergedBeanDefinitions.get(beanName);
+    if (mbd != null) {
+        return mbd;
+    }
+    // 获取 RootBeanDefinition，
+    // 如果返回的 BeanDefinition 是子类 bean 的话，则合并父类相关属性
+    return getMergedBeanDefinition(beanName, getBeanDefinition(beanName));
+}
+```
+
+- 首先，直接从 `mergedBeanDefinitions` 缓存中获取相应的 RootBeanDefinition 对象，如果存在则直接返回。
+- 否则，调用 `#getMergedBeanDefinition(String beanName, BeanDefinition bd)` 方法，获取 RootBeanDefinition 对象。
+
+调用 `#checkMergedBeanDefinition()` 方法，检查给定的合并的 BeanDefinition 对象。
+
+```
+// AbstractBeanFactory.java
+
+protected void checkMergedBeanDefinition(RootBeanDefinition mbd, String beanName, @Nullable Object[] args)
+		throws BeanDefinitionStoreException {
+	if (mbd.isAbstract()) {
+		throw new BeanIsAbstractException(beanName);
+	}
+}
+```
+
+#### 3.5 处理依赖
+
+如果一个 Bean 有依赖 Bean 的话，那么在初始化该 Bean 时是需要先初始化它所依赖的 Bean 。
+
+```
+// AbstractBeanFactory.java
+
+// 处理所依赖的 bean
+String[] dependsOn = mbd.getDependsOn();
+if (dependsOn != null) {
+    for (String dep : dependsOn) {
+        //若给定的依赖 bean 已经注册为依赖给定的 bean
+        if (isDependent(beanName, dep)) {
+            throw new BeanCreationException(mbd.getResourceDescription(), beanName,
+                    "Circular depends-on relationship between '" + beanName + "' and '" + dep + "'");
+        }
+        //缓存依赖调用
+        registerDependentBean(dep, beanName);
+        try {
+            //递归处理依赖 Bean
+            getBean(dep);
+        } catch (NoSuchBeanDefinitionException ex) {
+            throw new BeanCreationException(mbd.getResourceDescription(), beanName,
+                    "'" + beanName + "' depends on missing bean '" + dep + "'", ex);
+        }
+    }
+}
+```
+
+具体的代码还是通过两个 Map  `dependentBeanMap`、`dependenciesForBeanMap` 来处理，将该映射关系保存到两个集合来递归的处理。
+
+看下上面的过程图
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/RootBeanDefinition.png?raw=true)
+
+这样我们就得到了我们暂时想要的 RootBeanDefinition
+
+#### 3.6 不同scope 的 Bean 创建
+
+scope 有哪些呢？
+
+* singleton：单例模式，Spring IoC容器中只会存在一个共享的Bean实例，无论有多少个Bean引用它，始终指向同一对象。
+
+* prototype：原型模式，每次通过Spring容器获取prototype定义的bean时，容器都将创建一个新的Bean实例，每个Bean实例都有自己的属性和状态。
+
+* request：在一次Http请求中，容器会返回该Bean的同一实例。而对不同的Http请求则会产生新的Bean，而且该bean仅在当前Http Request内有效。
+
+* session：在一次Http Session中，容器会返回该Bean的同一实例。而对不同的Session请求则会创建新的实例，该bean实例仅在当前Session内有效。
+
+* global Session：在一个全局的Http Session中，容器会返回该Bean的同一个实例，仅在使用portlet context时有效
+
+我们来分析一下
+
+##### 3.6.1 singleton单例模式
+
+```
+				if (mbd.isSingleton()) {// 单例模式
+					sharedInstance = getSingleton(beanName, () -> {
+						try {
+							return createBean(beanName, mbd, args);
+						}
+						catch (BeansException ex) {
+							// 显式从单例缓存中删除 Bean 实例
+							// 因为单例模式下为了解决循环依赖，可能他已经存在了，所以销毁它。
+							destroySingleton(beanName);
+							throw ex;
+						}
+					});
+					bean = getObjectForBeanInstance(sharedInstance, name, beanName, mbd);
+				}
+```
+
+又看到了 getSingleton ,但是和我们之前的不一样。这个方法是由 DefaultSingletonBeanRegistry类的getSingleton(String beanName, ObjectFactory<?> singletonFactory)方法来实现
+
+```
+	//DefaultSingletonBeanRegistry.class
+	public Object getSingleton(String beanName, ObjectFactory<?> singletonFactory) {
+		Assert.notNull(beanName, "Bean name must not be null");
+		// 全局加锁
+		synchronized (this.singletonObjects) {
+			// 从缓存中检查一遍
+			// 因为 singleton 模式其实就是复用已经创建的 bean 所以这步骤必须检查
+			Object singletonObject = this.singletonObjects.get(beanName);
+			if (singletonObject == null) {
+				//  为空，开始加载过程
+				if (this.singletonsCurrentlyInDestruction) {
+					throw new BeanCreationNotAllowedException(beanName,
+							"Singleton bean creation not allowed while singletons of this factory are in destruction " +
+							"(Do not request a bean from a BeanFactory in a destroy method implementation!)");
+				}
+				if (logger.isDebugEnabled()) {
+					logger.debug("Creating shared instance of singleton bean '" + beanName + "'");
+				}
+				// 加载前置处理，前置和后置都很重要，标记bean创建到了哪一步
+				beforeSingletonCreation(beanName);
+				boolean newSingleton = false;
+				boolean recordSuppressedExceptions = (this.suppressedExceptions == null);
+				if (recordSuppressedExceptions) {
+					this.suppressedExceptions = new LinkedHashSet<>();
+				}
+				try {
+					// 初始化 bean
+					// 这个过程其实是调用 createBean() 方法
+					singletonObject = singletonFactory.getObject();
+					newSingleton = true;
+				}
+				catch (IllegalStateException ex) {
+					singletonObject = this.singletonObjects.get(beanName);
+					if (singletonObject == null) {
+						throw ex;
+					}
+				}
+				catch (BeanCreationException ex) {
+					if (recordSuppressedExceptions) {
+						for (Exception suppressedException : this.suppressedExceptions) {
+							ex.addRelatedCause(suppressedException);
+						}
+					}
+					throw ex;
+				}
+				finally {
+					if (recordSuppressedExceptions) {
+						this.suppressedExceptions = null;
+					}
+					//后置处理
+					afterSingletonCreation(beanName);
+				}
+				//加入缓存中
+				if (newSingleton) {
+					addSingleton(beanName, singletonObject);
+				}
+			}
+			return singletonObject;
+		}
+	}
+```
+
+这个过程并没有真正创建 Bean 对象，仅仅只是做了一部分准备和预处理步骤。真正获取单例 bean 的方法，其实是由 `<3>` 处的 `singletonFactory.getObject()` 这部分代码块来实现，而 `singletonFactory` 由回调方法产生。
+
+- 再次检查缓存是否已经加载过，如果已经加载了则直接返回，否则开始加载过程。
+- 调用 `#beforeSingletonCreation(String beanName)` 方法，记录加载单例 bean 之前的加载状态，即前置处理。
+- 调用参数传递的 ObjectFactory 的 `#getObject()` 方法，实例化 bean 。(后面还有好多要讲的)
+- 调用 `#afterSingletonCreation(String beanName)` 方法，进行加载单例后的后置处理。
+- 调用 `#addSingleton(String beanName, Object singletonObject)` 方法，将结果记录并加入值缓存中，同时删除加载 bean 过程中所记录的一些辅助状态
+
+加载了单例 bean 后，调用 `#getObjectForBeanInstance(Object beanInstance, String name, String beanName, RootBeanDefinition mbd)` 方法，从 bean 实例中获取对象。该方法已经在前面有讲过了
+
+##### 3.6.2 prototype原型模式
+
+原型模式很简单，因为不需要缓存，直接创建Bean就行
+
+```
+// AbstractBeanFactory.java
+
+else if (mbd.isPrototype()) {
+    Object prototypeInstance = null;
+    try {
+       //加载前置处理
+        beforePrototypeCreation(beanName);
+        //创建 Bean 对象
+        prototypeInstance = createBean(beanName, mbd, args);
+    } finally {
+       //加载后缀处理
+        afterPrototypeCreation(beanName);
+    }
+    //从 Bean 实例中获取对象
+    bean = getObjectForBeanInstance(prototypeInstance, name, beanName, mbd);
+}
+```
+
+它的前置和后置处理是通过 ThreadLocal 来防止重复创建，将正在创建的 bean 放入 ThreadLocal  来处理
+
+##### 3.6.3 其他三个 scope
+
+```
+// AbstractBeanFactory.java
+
+else {
+    // 获得 scopeName 对应的 Scope 对象
+    String scopeName = mbd.getScope();
+    final Scope scope = this.scopes.get(scopeName);
+    if (scope == null) {
+        throw new IllegalStateException("No Scope registered for scope name '" + scopeName + "'");
+    }
+    try {
+        // 从指定的 scope 下创建 bean
+        Object scopedInstance = scope.get(beanName, () -> {
+            // 加载前置处理
+            beforePrototypeCreation(beanName);
+            try {
+                // 创建 Bean 对象
+                return createBean(beanName, mbd, args);
+            } finally {
+                // 加载后缀处理
+                afterPrototypeCreation(beanName);
+            }
+        });
+        // 从 Bean 实例中获取对象
+        bean = getObjectForBeanInstance(scopedInstance, name, beanName, mbd);
+    } catch (IllegalStateException ex) {
+        throw new BeanCreationException(beanName,
+                "Scope '" + scopeName + "' is not active for the current thread; consider " +
+                "defining a scoped proxy for this bean if you intend to refer to it from a singleton",
+                ex);
+    }
+}
+```
+
+看到其实和 prototype 差不多，区别在于这三个获取 bean 实例是由 `Scope#get(String name, ObjectFactory<?> objectFactory)` 方法来实现。而 prototype 原型模式是通过调用 `#createBean(String beanName)` 方法，创建一个 bean 实例对象。
 
 
 
+关于具体创建 Bean 的代码我们后面再讲，我们就暂时的复习一下我们前面的学习
 
+![](https://github.com/esmusssein777/study/blob/master/md/picture/Scope.png?raw=true)
+
+分析完Scope的工作后我们还有非常主要的一点没有讲，就是关于创建 Bean 的工作，我们这个留着下一节再将吧。
+
+## 小结
+
+来看看我们这一节的图，看完就会稍微的更加明白一点的(●ˇ∀ˇ●)
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/Name2Scope.png?raw=true)
+
+我们的工作暂时就分析到 CreateBean()吧。
