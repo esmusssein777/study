@@ -374,10 +374,24 @@ protected Object getSingleton(String beanName, boolean allowEarlyReference) {
 这段代码和开头的三个 Map 的关系非常的密切。
 
 ```
+// DefaultSingletonBeanRegistry.java
+
+/**
+ * 单例对象的 Cache
+ * 对应关系为 bean name --> bean instance
+ */
 private final Map<String, Object> singletonObjects = new ConcurrentHashMap<>(256);
 
+/**
+ * 单例对象工厂的 Cache 
+ * 对应关系也是 bean name --> ObjectFactory 
+ **/
 private final Map<String, ObjectFactory<?>> singletonFactories = new HashMap<>(16);
 
+/**
+ * 提前曝光的单例对象的 Cache
+ * 对应关系是 bean name --> early bean instance。
+ */
 private final Map<String, Object> earlySingletonObjects = new HashMap<>(16);
 ```
 
