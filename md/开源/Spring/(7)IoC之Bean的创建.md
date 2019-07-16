@@ -758,6 +758,10 @@ public Object instantiate(@Nullable Constructor<?> ctor, Object... args) {
 
 深究 CGLIB 的代码的话又要很久了，这里使用的就是策略模式。判断是否覆盖方法的实现，如果没有覆盖，直接反射即可。如果覆盖了，那么需要CGLIB 的方式来实例化
 
+回顾一下上面的过程
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/BeanWrapper.png?raw=true)
+
 ### (二) 循环依赖处理
 
 我们在 IoC 之 Bean 的加载时的 2.1节 getSingleton(beanName) 时已经讲过如何处理依赖循环的事了，但是讲的不多，可能没有讲的不清楚。
@@ -1287,7 +1291,7 @@ protected void applyPropertyValues(String beanName, BeanDefinition mbd, BeanWrap
 
 总体来讲就是分下情况，属性值不需要转换就直接注入，需要转换就先转换再注入
 
-### 初始化Bean
+### (四)初始化Bean
 
 还记得我们走到哪了吗？
 
@@ -1303,7 +1307,7 @@ protected void applyPropertyValues(String beanName, BeanDefinition mbd, BeanWrap
 在将属性注入到Bean后，我们走到了最后一步的`#initializeBean(final String beanName, final Object bean, RootBeanDefinition mbd)` 方法。真正的初始化 Bean
 
 ```
-// AbstractAutowireCapableBeanFactory.java
+    // AbstractAutowireCapableBeanFactory.java
 
 protected Object initializeBean(final String beanName, final Object bean, @Nullable RootBeanDefinition mbd) {
     if (System.getSecurityManager() != null) { // 安全模式
@@ -1317,13 +1321,13 @@ protected Object initializeBean(final String beanName, final Object bean, @Nulla
         invokeAwareMethods(beanName, bean);
     }
 
-    //后处理器，before
+    //后处理器，applyBeanPostProcessorsBeforeInitialization
     Object wrappedBean = bean;
     if (mbd == null || !mbd.isSynthetic()) {
         wrappedBean = applyBeanPostProcessorsBeforeInitialization(wrappedBean, beanName);
     }
 
-    //激活用户自定义的 init 方法
+    //激活用户自定义的 init method
     try {
         invokeInitMethods(beanName, wrappedBean, mbd);
     } catch (Throwable ex) {
@@ -1332,7 +1336,7 @@ protected Object initializeBean(final String beanName, final Object bean, @Nulla
                 beanName, "Invocation of init method failed", ex);
     }
 
-    // <2> 后处理器，after
+    //后处理器applyBeanPostProcessorsAfterInitialization
     if (mbd == null || !mbd.isSynthetic()) {
         wrappedBean = applyBeanPostProcessorsAfterInitialization(wrappedBean, beanName);
     }
@@ -1341,3 +1345,128 @@ protected Object initializeBean(final String beanName, final Object bean, @Nulla
 }
 ```
 
+#### 激活Aware接口
+
+```
+// AbstractAutowireCapableBeanFactory.java
+
+private void invokeAwareMethods(final String beanName, final Object bean) {
+    if (bean instanceof Aware) {
+        // BeanNameAware
+        if (bean instanceof BeanNameAware) {
+            ((BeanNameAware) bean).setBeanName(beanName);
+        }
+        // BeanClassLoaderAware
+        if (bean instanceof BeanClassLoaderAware) {
+            ClassLoader bcl = getBeanClassLoader();
+            if (bcl != null) {
+                ((BeanClassLoaderAware) bean).setBeanClassLoader(bcl);
+            }
+        }
+        // BeanFactoryAware
+        if (bean instanceof BeanFactoryAware) {
+            ((BeanFactoryAware) bean).setBeanFactory(AbstractAutowireCapableBeanFactory.this);
+        }
+    }
+}
+```
+
+主要是处理 BeanNameAware、BeanClassLoaderAware、BeanFactoryAware接口
+
+什么是 Aware接口呢？
+
+`org.springframework.beans.factory.Aware` 接口，定义如下
+
+```
+public interface Aware {}
+```
+
+Aware 接口是一个空接口，实际的方法签名由各个子接口来确定。而且该接口通常只会有一个接收单参数的 set 方法。Spring有许许多多的Aware接口， BeanNameAware、BeanClassLoaderAware、BeanFactoryAware接口只是冰山一角。
+
+```
+public interface BeanNameAware extends Aware {
+    /**
+    * 在创建此 bean 的 bean工厂中设置 beanName
+    */
+    void setBeanName(String name);
+
+}
+
+public interface BeanClassLoaderAware extends Aware {
+    /**
+    * 将 BeanClassLoader 提供给 bean 实例回调
+    * 在 bean 属性填充之后、初始化回调之前回调，
+    */
+    void setBeanClassLoader(ClassLoader classLoader);
+
+}
+
+public interface BeanFactoryAware extends Aware {
+    /**
+    * 将 BeanFactory 提供给 bean 实例回调
+    * 调用时机和 setBeanClassLoader 一样
+    */
+    void setBeanFactory(BeanFactory beanFactory) throws BeansException;
+
+}
+
+```
+
+看完这个简单的方法 set 后我们就明白了，如果某一个 Bean 实现了某一个 Aware 的接口，那么在初始化 Bean 的时候就从 Spring 容器里面取得那个资源即可。
+
+#### 后置处理
+
+这个我们已经讲过很多遍了，在这里就不再讲了
+
+#### 激活自定义的 init 方法
+
+这个 init-method 方法是我们在 bean 标签里面自己定义的，在这里处理
+
+```
+// AbstractAutowireCapableBeanFactory.java
+
+protected void invokeInitMethods(String beanName, final Object bean, @Nullable RootBeanDefinition mbd)
+        throws Throwable {
+    // 首先会检查是否是 InitializingBean ，如果是的话需要调用 afterPropertiesSet()
+    boolean isInitializingBean = (bean instanceof InitializingBean);
+    if (isInitializingBean && (mbd == null || !mbd.isExternallyManagedInitMethod("afterPropertiesSet"))) {
+        if (logger.isTraceEnabled()) {
+            logger.trace("Invoking afterPropertiesSet() on bean with name '" + beanName + "'");
+        }
+        if (System.getSecurityManager() != null) { // 安全模式
+            try {
+                AccessController.doPrivileged((PrivilegedExceptionAction<Object>) () -> {
+                    //属性初始化的处理
+                    ((InitializingBean) bean).afterPropertiesSet();
+                    return null;
+                }, getAccessControlContext());
+            } catch (PrivilegedActionException pae) {
+                throw pae.getException();
+            }
+        } else {
+            //属性初始化的处理
+            ((InitializingBean) bean).afterPropertiesSet();
+        }
+    }
+
+    if (mbd != null && bean.getClass() != NullBean.class) {
+        String initMethodName = mbd.getInitMethodName();
+        if (StringUtils.hasLength(initMethodName) &&
+                !(isInitializingBean && "afterPropertiesSet".equals(initMethodName)) &&
+                !mbd.isExternallyManagedInitMethod(initMethodName)) {
+            //激活用户自定义的初始化方法
+            invokeCustomInitMethod(beanName, bean, mbd);
+        }
+    }
+}
+```
+
+总结一下前面的工作
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/InvokeInitMethods.png?raw=true)
+
+## 小结
+
+完结，撒花。
+
+![](https://github.com/esmusssein777/study/blob/master/md/picture/Bean.png?raw=true)
