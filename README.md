@@ -1,6 +1,19 @@
 # study
-自己实现一源码，比如spring的简单 ioc 和 aop，还有一些自己的思考
-[TOC]
+自己学习时的代码例子，配套写了一些博客文档 
+
+### [笔记地址](https://github.com/esmusssein777/study/tree/master/md)
+
+#### [blog](https://github.com/esmusssein777/study/tree/master/md/blog)
+
+#### [algorithm](https://github.com/esmusssein777/study/tree/master/md/algorithm)
+
+#### [document](https://github.com/esmusssein777/study/tree/master/md/document)
+
+选取了部分的文档放在 https://esmusssein777.github.io/#/
+
+
+
+# 其它优质博客文档
 
 ## Java
 ### 基础
