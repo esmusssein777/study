@@ -51,3 +51,12 @@
 ### Vue
 
 [Vue官方中文文档](<https://cn.vuejs.org/>)
+
+
+
+## 数据库
+
+### Redis
+
+[Redis详解](http://wiki.jikexueyuan.com/project/redis/)
+
