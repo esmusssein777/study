@@ -114,3 +114,4 @@ $ /usr/local/redis/bin/redis-server /usr/local/redis/bin/redis.conf
 我们输入/usr/local/redis/bin/redis-cli 可以进入命令行，这里是我里面存入了数据才可以得到。你也可以自己去测试.
 
 ![img](https://img-blog.csdn.net/20181019135349962?watermark/2/text/aHR0cHM6Ly9ibG9nLmNzZG4ubmV0L3FxXzM5MDcxNTMw/font/5a6L5L2T/fontsize/400/fill/I0JBQkFCMA==/dissolve/70)![点击并拖拽以移动](data:image/gif;base64,R0lGODlhAQABAPABAP///wAAACH5BAEKAAAALAAAAAABAAEAAAICRAEAOw==)
+
