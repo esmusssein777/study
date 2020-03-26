@@ -126,7 +126,7 @@ docker run -p 80:80 --name nginx \
 - 下载rabbitmq3.7.15的docker镜像：
 
   ```shell
-  docker pull rabbitmq:3.7.15Copy to clipboardErrorCopied
+  docker pull rabbitmq:3.7.15
   ```
 
 - 使用docker命令启动：
@@ -135,14 +135,14 @@ docker run -p 80:80 --name nginx \
   docker run -d --name rabbitmq \
   --publish 5671:5671 --publish 5672:5672 --publish 4369:4369 \
   --publish 25672:25672 --publish 15671:15671 --publish 15672:15672 \
-  rabbitmq:3.7.15Copy to clipboardErrorCopied
+  rabbitmq:3.7.15
   ```
 
 - 进入容器并开启管理功能：
 
   ```shell
   docker exec -it rabbitmq /bin/bash
-  rabbitmq-plugins enable rabbitmq_managementCopy to clipboardErrorCopied
+  rabbitmq-plugins enable rabbitmq_management
   ```
 
   
@@ -151,7 +151,7 @@ docker run -p 80:80 --name nginx \
 
   ```shell
   firewall-cmd --zone=public --add-port=15672/tcp --permanent
-  firewall-cmd --reloadCopy to clipboardErrorCopied
+  firewall-cmd --reload
   ```
 
 - 访问地址查看是否安装成功：http://192.168.3.101:15672/ ![展示图片](https://macrozheng.github.io/mall-learning/images/refer_screen_76.png)
@@ -166,18 +166,18 @@ docker run -p 80:80 --name nginx \
 
 - 给mall用户配置该虚拟host的权限 ![展示图片](https://macrozheng.github.io/mall-learning/images/refer_screen_80.png)
 
-## [Elasticsearch安装](https://macrozheng.github.io/mall-learning/#/deploy/mall_deploy_docker?id=elasticsearch安装)
+## Elasticsearch安装
 
 - 下载elasticsearch6.4.0的docker镜像：
 
   ```shell
-  docker pull elasticsearch:6.4.0Copy to clipboardErrorCopied
+  docker pull elasticsearch:6.4.0
   ```
 
 - 修改虚拟内存区域大小，否则会因为过小而无法启动:
 
   ```shell
-  sysctl -w vm.max_map_count=262144Copy to clipboardErrorCopied
+  sysctl -w vm.max_map_count=262144
   ```
 
 - 使用docker命令启动：
@@ -186,15 +186,15 @@ docker run -p 80:80 --name nginx \
   docker run -p 9200:9200 -p 9300:9300 --name elasticsearch \
   -e "discovery.type=single-node" \
   -e "cluster.name=elasticsearch" \
-  -v /mydata/elasticsearch/plugins:/usr/share/elasticsearch/plugins \
-  -v /mydata/elasticsearch/data:/usr/share/elasticsearch/data \
-  -d elasticsearch:6.4.0Copy to clipboardErrorCopied
+  -v $PWD/mydata/elasticsearch/plugins:/usr/share/elasticsearch/plugins \
+  -v $PWD/mydata/elasticsearch/data:/usr/share/elasticsearch/data \
+  -d elasticsearch:6.4.0
   ```
 
 - 启动时会发现/usr/share/elasticsearch/data目录没有访问权限，只需要修改/mydata/elasticsearch/data目录的权限，再重新启动。
 
   ```shell
-  chmod 777 /mydata/elasticsearch/data/Copy to clipboardErrorCopied
+  chmod 777 /mydata/elasticsearch/data/
   ```
 
 - 安装中文分词器IKAnalyzer，并重新启动：
@@ -203,14 +203,14 @@ docker run -p 80:80 --name nginx \
   docker exec -it elasticsearch /bin/bash
   #此命令需要在容器中运行
   elasticsearch-plugin install https://github.com/medcl/elasticsearch-analysis-ik/releases/download/v6.4.0/elasticsearch-analysis-ik-6.4.0.zip
-  docker restart elasticsearchCopy to clipboardErrorCopied
+  docker restart elasticsearch
   ```
 
 - 开启防火墙：
 
   ```shell
   firewall-cmd --zone=public --add-port=9200/tcp --permanent
-  firewall-cmd --reloadCopy to clipboardErrorCopied
+  firewall-cmd --reload
   ```
 
 - 访问会返回版本信息：http://192.168.3.101:9200/ ![展示图片](https://macrozheng.github.io/mall-learning/images/refer_screen_81.png)
@@ -220,7 +220,7 @@ docker run -p 80:80 --name nginx \
 - 下载kibana6.4.0的docker镜像：
 
   ```shell
-  docker pull kibana:6.4.0Copy to clipboardErrorCopied
+  docker pull kibana:6.4.0
   ```
 
 - 使用docker命令启动：
@@ -229,14 +229,14 @@ docker run -p 80:80 --name nginx \
   docker run --name kibana -p 5601:5601 \
   --link elasticsearch:es \
   -e "elasticsearch.hosts=http://es:9200" \
-  -d kibana:6.4.0Copy to clipboardErrorCopied
+  -d kibana:6.4.0
   ```
 
 - 开启防火墙：
 
   ```shell
   firewall-cmd --zone=public --add-port=5601/tcp --permanent
-  firewall-cmd --reloadCopy to clipboardErrorCopied
+  firewall-cmd --reload
   ```
 
 - 访问地址进行测试：[http://192.168.3.101:5601](http://192.168.3.101:5601/) ![展示图片](https://macrozheng.github.io/mall-learning/images/refer_screen_90.png)
@@ -246,15 +246,15 @@ docker run -p 80:80 --name nginx \
 - 下载mongo3.2的docker镜像：
 
   ```shell
-  docker pull mongo:3.2Copy to clipboardErrorCopied
+  docker pull mongo:3.2
   ```
 
 - 使用docker命令启动：
 
   ```shell
   docker run -p 27017:27017 --name mongo \
-  -v /mydata/mongo/db:/data/db \
-  -d mongo:3.2Copy to clipboardErrorCopied
+  -v $PWD/mydata/mongo/db:/data/db \
+  -d mongo:3.2
   ```
 
 ## [Docker全部环境安装完成](https://macrozheng.github.io/mall-learning/#/deploy/mall_deploy_docker?id=docker全部环境安装完成)
