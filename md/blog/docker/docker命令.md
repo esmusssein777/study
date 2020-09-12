@@ -74,6 +74,12 @@ docker images
 
 ![img](http://www.macrozheng.com/images/refer_screen_54.png)
 
+```
+docker inspect sebp/elk
+```
+
+列出镜像的所有详细信息
+
 ### 删除镜像
 
 - 指定名称删除镜像

@@ -1,41 +1,6 @@
 ### 安装ELK
 
-首先针对不同的系统给设置最小的内存值
-
-就算使用了Docker容器，`elasticsearch`仍然不像普通镜像那么简单启动，es对虚拟内存敏感，因此服务器必须是内核虚拟化`KVM`架构，不支持`OpenVZ`虚拟，参考官方说明
-
-> #### Production mode
->
-> The `vm.max_map_count` kernel setting needs to be set to at least `262144` for production use. Depending on your platform:
->
-> - Linux
->
->   The `vm.max_map_count` setting should be set permanently in /etc/sysctl.conf:
->
->   ```
->   $ grep vm.max_map_count /etc/sysctl.conf
->   vm.max_map_count=262144
->   ```
->
->   To apply the setting on a live system type: `sysctl -w vm.max_map_count=262144`
->
-> - macOS with [Docker for Mac](https://docs.docker.com/engine/installation/mac/#/docker-for-mac)
->
->   The `vm.max_map_count` setting must be set within the xhyve virtual machine:
->
->   ```
->   $ screen ~/Library/Containers/com.docker.docker/Data/vms/0/tty
->   ```
->
->   Just press enter and configure the `sysctl` setting as you would for Linux:
->
->   ```
->   sysctl -w vm.max_map_count=262144
->   ```
->
->   接着退出按 Control+A和Control+\
-
-
+启动elk.md
 
 
 接下来我们来安装ELK
