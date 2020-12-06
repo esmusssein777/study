@@ -27,7 +27,7 @@ mysql> create table T(c int) engine=InnoDB;
 insert into T(c) values(1);
 ```
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/vfc12C.png" alt="vfc12C" style="zoom: 25%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/vfc12C.png" alt="vfc12C" style="zoom: 25%;" />
 
 我们来看看在不同的隔离级别下，事务 A 会有哪些不同的返回结果，也就是图里面 V1、 V2、V3 的返回值分别是什么。
 
@@ -49,7 +49,7 @@ insert into T(c) values(1);
 
 假设一个值从 1 被按顺序改成了 2、3、4，在回滚日志里面就会有类似下面的记录。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/T9smkY.png" alt="T9smkY" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/T9smkY.png" alt="T9smkY" style="zoom:50%;" />
 
 当前值是 4，但是在查询这条记录的时候，不同时刻启动的事务会有不同的 read-view。 如图中看到的，在视图 A、B、C 里面，这一个记录的值分别是 1、2、4，同一条记录在系统中可以存在多个版本，就是数据库的多版本并发控制(MVCC)。对于 read-view A，要得到 1，就必须将当前值依次执行图中所有的回滚操作得到。
 
@@ -170,7 +170,7 @@ MySQL 里面表级别的锁有两种:一种是表锁，一种是元数据锁(met
 
 当并发系统中不同线程出现循环资源依赖，涉及的线程都在等待别的线程释放资源时，就会导致这几个线程都进入无限等待的状态，称为死锁。这里我用数据库中的行锁举个例子。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/yf4IT1.png" alt="yf4IT1" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/yf4IT1.png" alt="yf4IT1" style="zoom:50%;" />
 
 这时候，事务 A 在等待事务 B 释放 id=2 的行锁，而事务 B 在等待事务 A 释放 id=1 的 行锁。 事务 A 和事务 B 在互相等待对方的资源释放，就是进入了死锁状态。当出现死锁 以后，有两种策略:
 
@@ -191,7 +191,7 @@ insert into t(id, k) values(1,1),(2,2);
 
 创建一个表，按以下的执行流程执行事务
 
-![DOM7bD](https://gitee.com/Esmusssein/picture/raw/master/uPic/DOM7bD.png)
+![DOM7bD](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/DOM7bD.png)
 
 这里，我们需要注意的是事务的启动时机。
 
@@ -205,7 +205,7 @@ InnoDB 里面每个事务有一个唯一的事务 ID，叫作 transaction id。�
 
 也就是说，数据表中的一行记录，其实可能有多个版本 (row)，每个版本有自己的 row trx_id。
 
-![9kgj8T](https://gitee.com/Esmusssein/picture/raw/master/uPic/9kgj8T.png)
+![9kgj8T](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/9kgj8T.png)
 
 图中虚线框里是同一行数据的 4 个版本，当前最新版本是 V4，k 的值是 22，它是被transaction id 为 25 的事务更新的，因此它的 row trx_id 也是 25。
 
@@ -215,7 +215,7 @@ InnoDB 里面每个事务有一个唯一的事务 ID，叫作 transaction id。�
 
 那我们来分析一下真正的逻辑。首先我们不妨做如下假设:
 
-![QoIzmB](https://gitee.com/Esmusssein/picture/raw/master/uPic/QoIzmB.png)
+![QoIzmB](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/QoIzmB.png)
 
 事务A开始的时候是 [99,100] ，读数据从当前的版本读。
 
@@ -245,6 +245,6 @@ InnoDB 里面每个事务有一个唯一的事务 ID，叫作 transaction id。�
 
 那如果事务C改成了不是立马提交的形式，如下图
 
-![MKm8Nc](https://gitee.com/Esmusssein/picture/raw/master/uPic/MKm8Nc.png)
+![MKm8Nc](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/MKm8Nc.png)
 
 这时候，我们在上一篇文章中提到的“两阶段锁协议”就要上场了。事务 C’没提交，也 就是说 (1,2) 这个版本上的写锁还没释放。而事务 B 是当前读，必须要读最新版本，而且 必须加锁，因此就被锁住了，必须等到事务 C’释放这个锁，才能继续它的当前读。

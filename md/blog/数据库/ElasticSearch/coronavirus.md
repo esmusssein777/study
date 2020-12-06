@@ -38,7 +38,7 @@ setup.template.pattern: covid19
 GET covid19/_search
 ```
 
-![FZEp94](https://gitee.com/Esmusssein/picture/raw/master/uPic/FZEp94.png)
+![FZEp94](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/FZEp94.png)
 
 
 
@@ -70,7 +70,7 @@ PUT _ingest/pipeline/covid19_parser
 
 
 
-![uZf597](https://gitee.com/Esmusssein/picture/raw/master/uPic/uZf597.png)
+![uZf597](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/uZf597.png)
 
 
 
@@ -118,7 +118,7 @@ PUT _ingest/pipeline/covid19_parser
 
 `%{NUMBER:lat:float},%{NUMBER:lon:float},'%{DATA:address}',%{DATA:city},', *',%{DATA:country},%{NUMBER:infected:int},%{NUMBER:death:int}`
 
-![3fkqMh](https://gitee.com/Esmusssein/picture/raw/master/uPic/3fkqMh.png)
+![3fkqMh](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/3fkqMh.png)
 
 我们点击Grok Debugger，并把我们的相应的文档拷入到相应的输入框中，并用上面的grok pattern来解析数据。上面显示，它可以帮我们成功地解析我们想要的数据。显然这个被解析的信息更适合我们做数据的分析。为此，我们需要重新修改pipeline：
 
@@ -155,7 +155,7 @@ PUT _ingest/pipeline/covid19_parser
 
 `POST covid19/_update_by_query?pipeline=covid19_parser`
 我们重新来查看文档：
-![HlxLpn](https://gitee.com/Esmusssein/picture/raw/master/uPic/HlxLpn.png)
+![HlxLpn](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/HlxLpn.png)
 
 在上面我们可以看到新增加的country，infected，address等等的字段。
 
@@ -227,5 +227,5 @@ POST covid19/_update_by_query?pipeline=covid19_parser
 GET covid19/_search
 ```
 
-![2q5ihq](https://gitee.com/Esmusssein/picture/raw/master/uPic/2q5ihq.png)
+![2q5ihq](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/2q5ihq.png)
 

@@ -39,7 +39,7 @@ call idata();
 
 使用 show processlist 命令查看 Waiting for table metadata lock 的示意图。
 
-![JihbDz](https://gitee.com/Esmusssein/picture/raw/master/uPic/JihbDz.png)
+![JihbDz](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/JihbDz.png)
 
 出现这个状态表示的是，现在有一个线程正在表 t 上请求或者持有 MDL 写锁，把 select 语句堵住了。
 
@@ -65,7 +65,7 @@ select * from t sys.innodb_lock_waits where locked_table=`'test'.'t'`\G
 
 ### 查询慢
 
-![6Vb0xv](https://gitee.com/Esmusssein/picture/raw/master/uPic/6Vb0xv.png)
+![6Vb0xv](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/6Vb0xv.png)
 
 `select * from t where id=1`花费800ms，
 
@@ -98,7 +98,7 @@ commit;
 
 这个语句会命中 d=5 的这一行，对应的主键 id=5，因此在 select 语句 执行完成后，id=5 这一行会加一个写锁，而且由于两阶段锁协议，这个写锁会在执行 commit 语句的时候释放。
 
-![CCYz1t](https://gitee.com/Esmusssein/picture/raw/master/uPic/CCYz1t.png)
+![CCYz1t](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/CCYz1t.png)
 
 首先是语义上的。session A 在 T1 时刻就声明了，“我要把所有 d=5 的行锁住，不准别的事务进行读写操作”。而实际上，这个语义被破坏了。***其次，是数据一致性的问题。***
 
@@ -156,7 +156,7 @@ update 的加锁语义和 select ...for update 是一致的，所以这时候加
 
 #### 非唯一索引等值锁
 
-![KHRgqb](https://gitee.com/Esmusssein/picture/raw/master/uPic/KHRgqb.png)
+![KHRgqb](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/KHRgqb.png)
 
 这里 session A 要给索引 c 上 c=5 的这一行加上读锁。
 

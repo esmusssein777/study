@@ -4,7 +4,7 @@
 
 ## M-S 主备结构
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/pO1inC.png" alt="pO1inC" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/pO1inC.png" alt="pO1inC" style="zoom:50%;" />
 
 在状态 1 中，客户端的读写都直接访问节点 A，而节点 B 是 A 的备库，只是将 A 的更新 都同步过来，到本地执行。这样可以保持节点 B 和 A 的数据是相同的。
 
@@ -21,7 +21,7 @@ readonly 设置对超级 (super) 权限用户是无效的，而用于同步更�
 
 接下来，我们再看看节点 A 到 B 这条线的内部流程是什么样的。图中画出的就是一个 update 语句在节点 A 执行，然后同步到节点 B 的完整流程图。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/sdU00H.png" alt="sdU00H" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/sdU00H.png" alt="sdU00H" style="zoom:50%;" />
 
 主库接收到客户端的更新请求后，执行内部事务的更新逻辑，同时写 binlog。
 
@@ -37,7 +37,7 @@ readonly 设置对超级 (super) 权限用户是无效的，而用于同步更�
 
 ## 双M 结构
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/7P3nhI.png" alt="7P3nhI" style="zoom:50%;" /> 
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/7P3nhI.png" alt="7P3nhI" style="zoom:50%;" /> 
 
 你可以发现，双 M 结构和 M-S 结构，其实区别只是多了一条线，即: 节点 A 和 B 之间总是互为主备关系。这样在切换的时候就不用再修改主备关系。
 
@@ -164,7 +164,7 @@ slave-parallel-type 来控制并行复制策略:
 
 ## 一主多从
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/sUvg1M.png" alt="sUvg1M" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/sUvg1M.png" alt="sUvg1M" style="zoom:50%;" />
 
 图中，虚线箭头表示的是主备关系，也就是 A 和 A’互为主备， 从库 B、C、D 指向的是 主库 A。一主多从的设置，一般用于读写分离，主库负责所有的写入和一部分读，其他的 读请求则由从库分担。
 
@@ -266,7 +266,7 @@ master_auto_position=1
 
 ## Proxey
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/QunfVK.png" alt="QunfVK" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/QunfVK.png" alt="QunfVK" style="zoom:50%;" />
 
 在 MySQL 和客户端之间有一个中间代理层 proxy，客户端只连接 proxy， 由 proxy 根据请求类型和上下文决定请求的分发路由。
 
@@ -319,7 +319,7 @@ master_auto_position=1
 
 我们上面判断主备无延迟的逻辑，是“备库收到的日志都执行完成了”。但是，从 binlog 在主备之间状态的分析中，不难看出还有一部分日志，处于客户端已经收到提交确认，而 备库还没收到日志的状态。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/Gp3Hee.png" alt="Gp3Hee" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/Gp3Hee.png" alt="Gp3Hee" style="zoom:50%;" />
 
 假设主库上执行完成了三个事务 trx1、trx2 和 trx3，其中:
 

@@ -8,11 +8,11 @@
 
 磁盘大多数都还是机械结构（SSD不在讨论的范围内），如果将消息以随机写的方式存入磁盘，就需要按柱面、磁头、扇区的方式寻址，缓慢的机械运动（相对内存）会消耗大量时间，导致磁盘的写入速度与内存写入速度差好几个数量级。为了规避随机写带来的时间消耗，Kafka 采取了顺序写的方式存储数据，如下图所示：
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/UurWaQ.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/UurWaQ.jpg)
 
 每条消息都被append 到该 partition 中，属于顺序写磁盘，因此效率非常高。 但这种方法有一个缺陷：没有办法删除数据。所以Kafka是不会删除数据的，它会把所有的数据都保留下来，每个消费者（Consumer）对每个 Topic 都有一个 offset 用来表示读取到了第几条数据。
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/1SrEJm.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/1SrEJm.jpg)
 
 上图中有两个消费者，Consumer1 有两个 offset 分别对应 Partition0、Partition1（假设每一个 Topic 一个 Partition ）。Consumer2 有一个 offset 对应Partition2 。这个 offset 是由客户端 SDK 保存的，Kafka 的 Broker 完全无视这个东西的存在，一般情况下 SDK 会把它保存到 zookeeper 里面。 如果不删除消息，硬盘肯定会被撑满，所以 Kakfa 提供了两种策略来删除数据。一是基于时间，二是基于 partition 文件大小，具体配置可以参看它的配置文档。 即使是顺序写，过于频繁的大量小 I/O 操作一样会造成磁盘的瓶颈，所以 Kakfa 在此处的处理是把这些消息集合在一起批量发送，这样减少对磁盘 I/O 的过度操作，而不是一次发送单个消息。
 
@@ -32,7 +32,7 @@
 
 传统模式下我们从硬盘读取一个文件是这样的
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/acY0zH.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/acY0zH.jpg)
 
 (1) 操作系统将数据从磁盘读到内核空间的页缓存区
 
@@ -44,7 +44,7 @@
 
 这样做明显是低效的，这里有四次拷贝，两次系统调用。 针对这种情况 Unix 操作系统提供了一个优化的路径，用于将数据从页缓存区传输到 socket。在 Linux 中，是通过 sendfile 系统调用来完成的。Java提供了访问这个系统调用的方法：FileChannel.transferTo API。这种方式只需要一次拷贝：操作系统将数据直接从页缓存发送到网络上，在这个优化的路径中，只有最后一步将数据拷贝到网卡缓存中是需要的。
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/M331Ew.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/M331Ew.jpg)
 
 这个技术其实非常普遍，The C10K problem 里面也有很详细的介绍，Nginx 也是用的这种技术，稍微搜一下就能找到很多资料。
 

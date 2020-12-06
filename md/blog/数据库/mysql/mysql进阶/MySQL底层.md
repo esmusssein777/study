@@ -10,7 +10,7 @@ Server 层包括连接器、查询缓存、分析器、优化器、执行器等�
 
 而存储引擎层负责数据的存储和提取。其架构模式是插件式的，支持 InnoDB、 MyISAM、Memory 等多个存储引擎。现在最常用的存储引擎是 InnoDB，它从 MySQL 5.5.5 版本开始成为了默认存储引擎。
 
-![8XS0r9](https://gitee.com/Esmusssein/picture/raw/master/uPic/8XS0r9.png)
+![8XS0r9](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/8XS0r9.png)
 
 ### 连接器
 
@@ -26,33 +26,35 @@ Server 层包括连接器、查询缓存、分析器、优化器、执行器等�
 
 数据库里面，长连接是指连接成功后，如果客户端持续有请求，则一直使用同一个连接。短连接则是指每次执行完很少的几次查询就断开连接，下次查询再重新建立一个。
 
-建立连接的过程通常是比较复杂的，所以我建议你在使用中要尽量减少建立连接的动作，也就是尽量使用长连接。
+建立连接的过程通常是比较复杂的，建议在使用中要尽量减少建立连接的动作，也就是尽量使用长连接。
 
-但是全部使用长连接后，你可能会发现，有些时候 MySQL 占用内存涨得特别快，这是因 为 MySQL 在执行过程中临时使用的内存是管理在连接对象里面的。这些资源会在连接断 开的时候才释放。所以如果长连接累积下来，可能导致内存占用太大，被系统强行杀掉 (OOM)，从现象看就是 MySQL 异常重启了。
+但是全部使用长连接后，你可能会发现，有些时候 MySQL 占用内存涨得特别快，这是因为 MySQL 在执行过程中临时使用的内存是管理在连接对象里面的。这些资源会在连接断开的时候才释放。所以如果长连接累积下来，可能导致内存占用太大，被系统强行杀掉 (OOM)，从现象看就是 MySQL 异常重启了。
 
 怎么解决这个问题呢?你可以考虑以下两种方案。
 
 1. 定期断开长连接。使用一段时间，或者程序里面判断执行过一个占用内存的大查询后， 断开连接，之后要查询再重连。
 
-2. 如果你用的是 MySQL 5.7 或更新版本，可以在每次执行一个比较大的操作后，通过执行 mysql_reset_connection 来重新初始化连接资源。这个过程不需要重连和重新做权 限验证，但是会将连接恢复到刚刚创建完时的状态。
+2. 如果你用的是 MySQL 5.7 或更新版本，可以在每次执行一个比较大的操作后，通过执行 mysql_reset_connection 来重新初始化连接资源。这个过程不需要重连和重新做权限验证，但是会将连接恢复到刚刚创建完时的状态。
 
 ### 查询缓存
 
 连接建立完成后，你就可以执行 select 语句了。执行逻辑就会来到第二步:查询缓存。
 
-MySQL 拿到一个查询请求后，会先到查询缓存看看，之前是不是执行过这条语句。之前 执行过的语句及其结果可能会以 key-value 对的形式，被直接缓存在内存中。key 是查询 的语句，value 是查询的结果。如果你的查询能够直接在这个缓存中找到 key，那么这个 value 就会被直接返回给客户端。
+MySQL 拿到一个查询请求后，会先到查询缓存看看，之前是不是执行过这条语句。之前执行过的语句及其结果可能会以 key-value 对的形式，被直接缓存在内存中。key 是查询的语句，value 是查询的结果。如果你的查询能够直接在这个缓存中找到 key，那么这个 value 就会被直接返回给客户端。
 
-如果语句不在查询缓存中，就会继续后面的执行阶段。执行完成后，执行结果会被存入查 询缓存中。你可以看到，如果查询命中缓存，MySQL 不需要执行后面的复杂操作，就可 以直接返回结果，这个效率会很高。
+如果语句不在查询缓存中，就会继续后面的执行阶段。执行完成后，执行结果会被存入查询缓存中。你可以看到，如果查询命中缓存，MySQL 不需要执行后面的复杂操作，就可以直接返回结果，这个效率会很高。
 
-***但是大多数情况下我会建议你不要使用查询缓存，为什么呢?因为查询缓存往往弊大于利。查询缓存的失效非常频繁，只要有对一个表的更新，这个表上所有的查询缓存都会被清空***
+***但是大多数情况下我会建议你不要使用查询缓存，为什么呢?因为查询缓存往往弊大于利。查询缓存的失效非常频繁，只要有对一个表的更新，这个表上所有的查询缓存都会被清空***。
 
-需要注意的是，MySQL 8.0 版本直接将查询缓存的整块功能删掉了，也就是说 8.0 开始彻 底没有这个功能了。
+可以用 `SHOW VARIABLES LIKE '%query_cache%';`来查看 type 是否开启查询缓存
+
+需要注意的是，MySQL 8.0 版本直接将查询缓存的整块功能删掉了，也就是说 8.0 开始彻底没有这个功能了。
 
 ### 分析器
 
 分析器先会做“词法分析”。你输入的是由多个字符串和空格组成的一条 SQL 语句， MySQL 需要识别出里面的字符串分别是什么，代表什么。
 
-MySQL 从你输入的"select"这个关键字识别出来，这是一个查询语句。它也要把字符 串“T”识别成“表名 T”，把字符串“ID”识别成“列 ID”。
+MySQL 从你输入的"select"这个关键字识别出来，这是一个查询语句。它也要把字符串“T”识别成“表名 T”，把字符串“ID”识别成“列 ID”。
 
 如果你输入一条 `select * from T where T.name=1;` 如果表T或者字段name在数据库没有的话，那么在分析器层应该返回`Unknown column ‘k’ in ‘where clause`
 
@@ -70,13 +72,13 @@ MySQL 从你输入的"select"这个关键字识别出来，这是一个查询语
 
 ### 执行器
 
-开始执行的时候，要先判断一下你对这个表 T 有没有执行查询的权限，如果没有，就会返 回没有权限的错误，如下所示 (在工程实现上，如果命中查询缓存，会在查询缓存返回结 果的时候，做权限验证。查询也会在优化器之前调用 precheck 验证权限)。
+开始执行的时候，要先判断一下你对这个表 T 有没有执行查询的权限，如果没有，就会返回没有权限的错误，如下所示 (在工程实现上，如果命中查询缓存，会在查询缓存返回结果的时候，做权限验证。查询也会在优化器之前调用 precheck 验证权限)。
 
 > 为什么要在执行器才分析权限，主要是查询的语句有时候很麻烦，join表，或者有个触发器，很多时候在执行时才能确定
 
 比如我们这个例子中的表 T 中，ID 字段没有索引，那么执行器的执行流程是这样的:
 
-1. 调用 InnoDB 引擎接口取这个表的第一行，判断 ID 值是不是 10，如果不是则跳过，如 果是则将这行存在结果集中;
+1. 调用 InnoDB 引擎接口取这个表的第一行，判断 ID 值是不是 10，如果不是则跳过，如果是则将这行存在结果集中;
 
 2. 调用引擎接口取“下一行”，重复相同的判断逻辑，直到取到这个表的最后一行。
 3. 执行器将上述遍历过程中所有满足条件的行组成的记录集作为结果集返回给客户端。
@@ -89,9 +91,9 @@ MySQL 从你输入的"select"这个关键字识别出来，这是一个查询语
 
 当有一条记录需要更新的时候，InnoDB 引擎就会先把记录写到 redo log里面，并更新内存，这个时候更新就算完成了。同时，InnoDB 引擎会在适当的时候，将这个操作记录更新到磁盘里面，而这个更新往往是在系统比较空闲的时候做。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/s0lyWr.png" alt="s0lyWr" style="zoom: 25%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/s0lyWr.png" alt="s0lyWr" style="zoom: 25%;" />
 
-write pos 是当前记录的位置，一边写一边后移，写到第 3 号文件末尾后就回到 0 号文件 开头。checkpoint 是当前要擦除的位置，也是往后推移并且循环的，擦除记录前要把记录 更新到数据文件。
+write pos 是当前记录的位置，一边写一边后移，写到第 3 号文件末尾后就回到 0 号文件开头。checkpoint 是当前要擦除的位置，也是往后推移并且循环的，擦除记录前要把记录更新到数据文件。
 
 write pos 和 checkpoint 之间的是“粉板”上还空着的部分，可以用来记录新的操作。如果 write pos 追上 checkpoint，表示“粉板”满了，这时候不能再执行新的更新，得停下来先擦掉一些记录，把 checkpoint 推进一下。
 
@@ -129,77 +131,19 @@ binlog 有三种格式，分别是 statement、row、mixed。statement 格式的
 
 这里我给出这个 update 语句的执行流程图，图中浅色框表示是在 InnoDB 内部执行的， 深色框表示是在执行器中执行的。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/95t4P5.png" alt="95t4P5" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/95t4P5.png" alt="95t4P5" style="zoom:50%;" />
 
 redo log 的写入拆成了两个步骤: prepare 和 commit，这就是"两阶段提交"。
 
 ## 机制
 
-### change buffer
-
-当需要更新一个数据页时，如果数据页在内存中就直接更新，而如果这个数据页还没有在内存中的话，在不影响数据一致性的前提下，InooDB 会将这些更新操作缓存在 change buffer 中，这样就不需要从磁盘中读入这个数据页了。在下次查询需要访问这个数据页的时候，将数据页读入内存，然后执行 change buffer 中与这个页有关的操作。通过这种方 式就能保证这个数据逻辑的正确性。
-
-需要说明的是，虽然名字叫作 change buffer，实际上它是可以持久化的数据。也就是说，change buffer 在内存中有拷贝，也会被写入到磁盘上。
-
-将 change buffer 中的操作应用到原数据页，得到最新结果的过程称为 merge。除了访问这个数据页会触发 merge 外，系统有后台线程会定期 merge。在数据库正常关闭 (shutdown)的过程中，也会执行 merge 操作。
-
-显然，如果能够将更新操作先记录在 change buffer，减少读磁盘，语句的执行速度会得到明显的提升。而且，数据读入内存是需要占用 buffer pool 的，所以这种方式还能够避免占用内存，提高内存利用率。
-
-我们要在表上执行这个插入语句:
-
-```
-mysql> insert into t(id,k) values(id1,k1),(id2,k2);
-```
-
-这里，我们假设当前 k 索引树的状态，查找到位置后，k1 所在的数据页在内存 (InnoDB buffer pool) 中，k2 所在的数据页不在内存中。如图 2 所示是带 change buffer 的更新状态图。
-
-![Q55UKs](https://gitee.com/Esmusssein/picture/raw/master/uPic/Q55UKs.png)
-
-分析这条更新语句，你会发现它涉及了四个部分:内存、redo log(ib_log_fileX)、 数据表空间(t.ibd)、系统表空间(ibdata1)。 这条更新语句做了如下的操作(按照图中的数字顺序):
-
-1. Page 1 在内存中，直接更新内存;
-
-2. Page 2 没有在内存中，就在内存的 change buffer 区域，记录下“我要往 Page 2 插入一行”这个信息
-
-3. 将上述两个动作记入 redo log 中(图中 3 和 4)。
-
-做完上面这些，事务就可以完成了。所以，你会看到，执行这条更新语句的成本很低，就是写了两处内存，然后写了一处磁盘(两次操作合在一起写了一次磁盘)，而且还是顺序写的。
-
-同时，图中的两个虚线箭头，是后台操作，不影响更新的响应时间。
-
-那在这之后的读请求，要怎么处理呢?比如，我们现在要执行 select * from t where k in (k1, k2)。这里，我画了这两个读请求 的流程图。
-
-如果读语句发生在更新语句后不久，内存中的数据都还在，那么此时的这两个读操作就与系统表空间(ibdata1)和 redo log(ib_log_fileX)无关了。所以，我在图中就没画出 这两部分。
-
-![0SjiAU](https://gitee.com/Esmusssein/picture/raw/master/uPic/0SjiAU.png)
-
-1. 读 Page 1 的时候，直接从内存返回。有几位同学在前面文章的评论中问到，WAL 之后如果读数据，是不是一定要读盘，是不是一定要从 redo log 里面把数据更新以后才可以返回?其实是不用的。你可以看一下图 3 的这个状态，虽然磁盘上还是之前的数据， 但是这里直接从内存返回结果，结果是正确的。
-
-2. 要读 Page 2 的时候，需要把 Page 2 从磁盘读入内存中，然后应用 change buffer 里面的操作日志，生成一个正确的版本并返回结果。
-
-可以看到，直到需要读 Page 2 的时候，这个数据页才会被读入内存。
-
-所以，如果要简单地对比这两个机制在提升更新性能上的收益的话，redo log 主要节省的 是随机写磁盘的 IO 消耗(转成顺序写)，而 change buffer 主要节省的则是随机读磁盘 的 IO 消耗。
-
-#### 使用场景
-
-因此，对于写多读少的业务来说，页面在写完以后马上被访问到的概率比较小，此时 change buffer 的使用效果最好。这种业务模型常见的就是账单类、日志类的系统。
-
-反过来，假设一个业务的更新模式是写入之后马上会做查询，那么即使满足了条件，将更新先记录在 change buffer，但之后由于马上要访问这个数据页，会立即触发 merge 过 程。这样随机访问 IO 的次数不会减少，反而增加了 change buffer 的维护代价。所以， 对于这种业务模式来说，change buffer 反而起到了副作用。
-
-#### 丢失问题
-
-change buffer 一开始是写内存的，那么如果这个时候机器掉电重启，会不会导致 change buffer 丢失呢?change buffer 丢失可不是小事儿，再从磁盘读入数据可就没有了 merge 过程，就等于是数据丢失了。会不会出现这种情况呢?
-
-答案是不会丢失。虽然是只更新内存，但是在事务提交的时候，我们把 change buffer 的操作也记录到 redo log 里了，所以崩溃恢复的时候，change buffer 也能找回来。
-
 ### crash safe
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/95t4P5.png" alt="95t4P5" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/95t4P5.png" alt="95t4P5" style="zoom:50%;" />
 
 时刻A属于 redolog prepare到写binlog阶段，时刻B属于写 bingo 到 commit阶段。
 
-如果在图中时刻 A 的地方，也就是写入 redo log 处于 prepare 阶段之后、写 binlog 之前，发生了崩溃(crash)，由于此时 binlog 还没写，redo log 也还没提交，所以崩溃恢 复的时候，这个事务会回滚。这时候，binlog 还没写，所以也不会传到备库。到这里，大家都可以理解。
+如果在图中时刻 A 的地方，也就是写入 redo log 处于 prepare 阶段之后、写 binlog 之前，发生了崩溃(crash)，由于此时 binlog 还没写，redo log 也还没提交，所以崩溃恢复的时候，这个事务会回滚。这时候，binlog 还没写，所以也不会传到备库。到这里，大家都可以理解。
 
 大家出现问题的地方，主要集中在时刻 B，也就是 binlog 写完，redo log 还没 commit 前发生 crash，那崩溃恢复的时候 MySQL 会怎么处理?
 
@@ -223,6 +167,66 @@ change buffer 一开始是写内存的，那么如果这个时候机器掉电重
   * 如果碰到既有 prepare、又有 commit 的 redo log，就直接提交;
   * 如果碰到只有 parepare、而没有 commit 的 redo log，就拿着 XID 去 binlog 找对应的事务。
 
+### change buffer
+
+当需要更新一个数据页时，如果数据页在内存中就直接更新，而如果这个数据页还没有在内存中的话，在不影响数据一致性的前提下，InooDB 会将这些更新操作缓存在 change buffer 中，这样就不需要从磁盘中读入这个数据页了。在下次查询需要访问这个数据页的时候，将数据页读入内存，然后执行 change buffer 中与这个页有关的操作。通过这种方式就能保证这个数据逻辑的正确性。
+
+需要说明的是，虽然名字叫作 change buffer，实际上它是可以持久化的数据。也就是说，change buffer 在内存中有拷贝，也会被写入到磁盘上。
+
+将 change buffer 中的操作应用到原数据页，得到最新结果的过程称为 merge。除了访问这个数据页会触发 merge 外，系统有后台线程会定期 merge。在数据库正常关闭 (shutdown)的过程中，也会执行 merge 操作。
+
+显然，如果能够将更新操作先记录在 change buffer，减少读磁盘，语句的执行速度会得到明显的提升。而且，数据读入内存是需要占用 buffer pool 的，所以这种方式还能够避免占用内存，**提高内存利用率**。
+
+>如果不使用change buffer ，一次性写入很多不在内存的数据的话，那么内存的利用率会急剧下降
+
+我们要在表上执行这个插入语句:
+
+```
+mysql> insert into t(id,k) values(id1,k1),(id2,k2);
+```
+
+这里，我们假设当前 k 索引树的状态，查找到位置后，k1 所在的数据页在内存 (InnoDB buffer pool) 中，k2 所在的数据页不在内存中。如图 2 所示是带 change buffer 的更新状态图。
+
+![Q55UKs](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/Q55UKs.png)
+
+分析这条更新语句，你会发现它涉及了四个部分:内存、redo log(ib_log_fileX)、 数据表空间(t.ibd)、系统表空间(ibdata1)。 这条更新语句做了如下的操作(按照图中的数字顺序):
+
+1. Page 1 在内存中，直接更新内存;
+
+2. Page 2 没有在内存中，就在内存的 change buffer 区域，记录下“我要往 Page 2 插入一行”这个信息
+
+3. 将上述两个动作记入 redo log 中(图中 3 和 4)。
+
+做完上面这些，事务就可以完成了。所以，你会看到，执行这条更新语句的成本很低，就是写了两处内存，然后写了一处磁盘(两次操作合在一起写了一次磁盘)，而且还是顺序写的。
+
+同时，图中的两个虚线箭头，是后台操作，不影响更新的响应时间。
+
+那在这之后的读请求，要怎么处理呢?比如，我们现在要执行 select * from t where k in (k1, k2)。这里，我画了这两个读请求 的流程图。
+
+如果读语句发生在更新语句后不久，内存中的数据都还在，那么此时的这两个读操作就与系统表空间(ibdata1)和 redo log(ib_log_fileX)无关了。所以，我在图中就没画出 这两部分。
+
+![0SjiAU](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/0SjiAU.png)
+
+1. 读 Page 1 的时候，直接从内存返回。有几位同学在前面文章的评论中问到，WAL 之后如果读数据，是不是一定要读盘，是不是一定要从 redo log 里面把数据更新以后才可以返回?其实是不用的。你可以看一下图 3 的这个状态，虽然磁盘上还是之前的数据， 但是这里直接从内存返回结果，结果是正确的。
+
+2. 要读 Page 2 的时候，需要把 Page 2 从磁盘读入内存中，然后应用 change buffer 里面的操作日志，生成一个正确的版本并返回结果。
+
+可以看到，直到需要读 Page 2 的时候，这个数据页才会被读入内存。
+
+所以，如果要简单地对比这两个机制在提升更新性能上的收益的话，redo log 主要节省的是随机写磁盘的 IO 消耗(转成顺序写)，而 change buffer 主要节省的则是随机读磁盘 的 IO 消耗。
+
+#### 使用场景
+
+因此，对于写多读少的业务来说，页面在写完以后马上被访问到的概率比较小，此时 change buffer 的使用效果最好。这种业务模型常见的就是账单类、日志类的系统。
+
+反过来，假设一个业务的更新模式是写入之后马上会做查询，那么即使满足了条件，将更新先记录在 change buffer，但之后由于马上要访问这个数据页，会立即触发 merge 过程。这样随机访问 IO 的次数不会减少，反而增加了 change buffer 的维护代价。所以， 对于这种业务模式来说，change buffer 反而起到了副作用。
+
+#### 丢失问题
+
+change buffer 一开始是写内存的，那么如果这个时候机器掉电重启，会不会导致 change buffer 丢失呢?change buffer 丢失可不是小事儿，再从磁盘读入数据可就没有了 merge 过程，就等于是数据丢失了。会不会出现这种情况呢?
+
+答案是不会丢失。虽然是只更新内存，但是在事务提交的时候，我们把 change buffer 的操作也记录到 redo log 里了，所以崩溃恢复的时候，change buffer 也能找回来。
+
 ### binlog写入
 
 binlog 的写入逻辑比较简单:事务执行过程中，先把日志写到 binlog cache，事务提交的时候，再把 binlog cache 写到 binlog 文件中。
@@ -233,7 +237,7 @@ binlog 的写入逻辑比较简单:事务执行过程中，先把日志写到 bi
 
 事务提交的时候，执行器把 binlog cache 里的完整事务写入到 binlog 中，并清空 binlog cache。状态如图。
 
-![COIPn7](https://gitee.com/Esmusssein/picture/raw/master/uPic/COIPn7.png)
+![COIPn7](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/COIPn7.png)
 
 可以看到，每个线程有自己 binlog cache，但是共用同一份 binlog 文件。
 
@@ -253,7 +257,7 @@ write 和 fsync 的时机，是由参数 sync_binlog 控制的:
 
 #### redo log写入
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/E1Tf41.png" alt="E1Tf41" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/E1Tf41.png" alt="E1Tf41" style="zoom:50%;" />
 
 为了控制 redo log 的写入策略，InnoDB 提供了 innodb_flush_log_at_trx_commit 参数，它有三种可能取值:
 
@@ -268,7 +272,7 @@ InnoDB 有一个后台线程，每隔 1 秒，就会把 redo log buffer 中的�
 
 1. 一种是，redo log buffer 占用的空间即将达到 innodb_log_buffer_size 一半的时候，后台线程会主动写盘。注意，由于这个事务并没有提交，所以这个写盘动作只是 write，而没有调用 fsync，也就是只留在了文件系统的 page cache。
 
-2. 另一种是，并行的事务提交的时候，顺带将这个事务的 redo log buffer 持久化到磁盘。假设一个事务 A 执行到一半，已经写了一些 redo log 到 buffer 中，这时候有另 外一个线程的事务 B 提交，如果 innodb_flush_log_at_trx_commit 设置的是 1，那么 按照这个参数的逻辑，事务 B 要把 redo log buffer 里的日志全部持久化到磁盘。这时 候，就会带上事务 A 在 redo log buffer 里的日志一起持久化到磁盘。
+2. 另一种是，并行的事务提交的时候，顺带将这个事务的 redo log buffer 持久化到磁盘。假设一个事务 A 执行到一半，已经写了一些 redo log 到 buffer 中，这时候有另外一个线程的事务 B 提交，如果 innodb_flush_log_at_trx_commit 设置的是 1，那么 按照这个参数的逻辑，事务 B 要把 redo log buffer 里的日志全部持久化到磁盘。这时候，就会带上事务 A 在 redo log buffer 里的日志一起持久化到磁盘。
 
 这里需要说明的是，我们介绍两阶段提交的时候说过，时序上 redo log 先 prepare， 再写 binlog，最后再把 redo log commit。
 
@@ -288,7 +292,7 @@ LSN 也会写到 InnoDB 的数据页中，来确保数据页不会被多次执�
 
 为了让一次 fsync 带的组员更多，MySQL 有一个很有趣的优化
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/thyqre.png" alt="thyqre" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/thyqre.png" alt="thyqre" style="zoom:50%;" />
 
 这么一来，binlog 也可以组提交了。在执行图 5 中第 4 步把 binlog fsync 到磁盘时，如果有多个事务的 binlog 已经写完了，也是一起持久化的，这样也可以减少 IOPS 的消耗。
 
@@ -297,7 +301,7 @@ LSN 也会写到 InnoDB 的数据页中，来确保数据页不会被多次执�
 假设我们输入一个sql语句
 
 ```
-mysql> delete from t /*comment*/ where a>=4 and t_modified<='2018-11-10' limit 1;
+mysql> delete from t where a>=4 and t_modified<='2018-11-10' limit 1;
 ```
 
 ##### statement
@@ -374,7 +378,7 @@ InnoDB 的数据是保存在主键索引上的，所以全表扫描实际上是�
 
 你可以在 show engine innodb status 结果中，查看一个系统当前的 BP 命中率。一般情况下，一个稳定服务的线上系统，要保证响应时间符合要求的话，内存命中率要在 99% 以上。
 
-执行 show engine innodb status ，可以看到“Buffer pool hit rate”字样，显示的就是 当前的命中率。InnoDB Buffer Pool 的大小是由参数 innodb_buffer_pool_size 确定的，一般建议设置 成可用物理内存的 60%~80%。
+执行 show engine innodb status ，可以看到“Buffer pool hit rate”字样，显示的就是当前的命中率。InnoDB Buffer Pool 的大小是由参数 innodb_buffer_pool_size 确定的，一般建议设置 成可用物理内存的 60%~80%。
 
 InnoDB 管理 Buffer Pool 的 LRU 算法，是用链表来实现的。
 
@@ -388,15 +392,15 @@ InnoDB 管理 Buffer Pool 的 LRU 算法，是用链表来实现的。
 
 这个算法乍一看上去没什么问题，但是如果考虑到要做一个全表扫描，会不会有问题呢?
 
-假设按照这个算法，我们要扫描一个 200G 的表，而这个表是一个历史数据表，平时没有业务访问它。那么，按照这个算法扫描的话，就会把当前的 Buffer Pool 里的数据全部淘汰掉，存入扫 描过程中访问到的数据页的内容。也就是说 Buffer Pool 里面主要放的是这个历史数据表 的数据。对于一个正在做业务服务的库，这可不妙。你会看到，Buffer Pool 的内存命中率急剧下降，磁盘压力增加，SQL 语句响应变慢。
+假设按照这个算法，我们要扫描一个 200G 的表，而这个表是一个历史数据表，平时没有业务访问它。那么，按照这个算法扫描的话，就会把当前的 Buffer Pool 里的数据全部淘汰掉，存入扫描过程中访问到的数据页的内容。也就是说 Buffer Pool 里面主要放的是这个历史数据表的数据。对于一个正在做业务服务的库，这可不妙。你会看到，Buffer Pool 的内存命中率急剧下降，磁盘压力增加，SQL 语句响应变慢。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/2g2vCk.png" alt="2g2vCk" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/2g2vCk.png" alt="2g2vCk" style="zoom:50%;" />
 
 在 InnoDB 实现上，按照 5:3 的比例把整个 LRU 链表分成了 young 区域和 old 区域。图 中 LRU_old 指向的就是 old 区域的第一个位置，是整个链表的 5/8 处。也就是说，靠近链表头部的 5/8 是 young 区域，靠近链表尾部的 3/8 是 old 区域。
 
 改进后的 LRU 算法执行流程变成了下面这样。
 
-1. 图 7 中状态 1，要访问数据页 P3，由于 P3 在 young 区域，因此和优化前的 LRU 算法 一样，将其移到链表头部，变成状态 2。
+1. 图中状态 1，要访问数据页 P3，由于 P3 在 young 区域，因此和优化前的 LRU 算法 一样，将其移到链表头部，变成状态 2。
 
 2. 之后要访问一个新的不存在于当前链表的数据页，这时候依然是淘汰掉数据页 Pm，但是新插入的数据页 Px，是放在 LRU_old 处。
 

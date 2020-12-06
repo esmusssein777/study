@@ -104,7 +104,7 @@ docker run -d --name kafka1 -p 9093:9093 -e KAFKA_BROKER_ID=1 -e KAFKA_ZOOKEEPER
 
 输出结果：
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/Dhf2zK.png)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/Dhf2zK.png)
 
 ```
 Topic:partiton-topic  PartitionCount:2    ReplicationFactor:2 Configs:
@@ -118,4 +118,4 @@ Topic:partiton-topic  PartitionCount:2    ReplicationFactor:2 Configs:
 
 IDEA上有插件名字叫做Zookeeper-tool，可以看到zk下面的Kafka注册情况
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/wE4bYT.png" alt="zooker" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/wE4bYT.png" alt="zooker" style="zoom:50%;" />

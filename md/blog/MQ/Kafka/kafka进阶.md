@@ -6,7 +6,7 @@
 
 Broker 是Kafka 集群中的节点。负责处理生产者发送过来的消息，消费者消费的请求。以及集群节点的管理等。
 
-<img src="https://gitee.com/Esmusssein/picture/raw/master/uPic/wE4bYT.png" alt="zooker" style="zoom:50%;" />
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/wE4bYT.png" alt="zooker" style="zoom:50%;" />
 
 ZooKeeper 主要为 Kafka 提供元数据的管理的功能。
 
@@ -59,11 +59,11 @@ partition Replica分配算法如下：
 
 磁盘大多数都还是机械结构（SSD不在讨论的范围内），如果将消息以随机写的方式存入磁盘，就需要按柱面、磁头、扇区的方式寻址，缓慢的机械运动（相对内存）会消耗大量时间，导致磁盘的写入速度与内存写入速度差好几个数量级。为了规避随机写带来的时间消耗，Kafka 采取了顺序写的方式存储数据，如下图所示：
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/UurWaQ.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/UurWaQ.jpg)
 
 每条消息都被append 到该 partition 中，属于顺序写磁盘，因此效率非常高。 但这种方法有一个缺陷：没有办法删除数据。所以Kafka是不会删除数据的，它会把所有的数据都保留下来，每个消费者（Consumer）对每个 Topic 都有一个 offset 用来表示读取到了第几条数据。
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/1SrEJm.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/1SrEJm.jpg)
 
 上图中有两个消费者，Consumer1 有两个 offset 分别对应 Partition0、Partition1（假设每一个 Topic 一个 Partition ）。Consumer2 有一个 offset 对应Partition2 。这个 offset 是由客户端 SDK 保存的，Kafka 的 Broker 完全无视这个东西的存在，一般情况下 SDK 会把它保存到 zookeeper 里面。 如果不删除消息，硬盘肯定会被撑满，所以 Kakfa 提供了两种策略来删除数据。一是基于时间，二是基于 partition 文件大小，具体配置可以参看它的配置文档。 即使是顺序写，过于频繁的大量小 I/O 操作一样会造成磁盘的瓶颈，所以 Kakfa 在此处的处理是把这些消息集合在一起批量发送，这样减少对磁盘 I/O 的过度操作，而不是一次发送单个消息。
 
@@ -83,7 +83,7 @@ partition Replica分配算法如下：
 
 传统模式下我们从硬盘读取一个文件是这样的
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/acY0zH.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/acY0zH.jpg)
 
 (1) 操作系统将数据从磁盘读到内核空间的页缓存区
 
@@ -95,7 +95,7 @@ partition Replica分配算法如下：
 
 这样做明显是低效的，这里有四次拷贝，两次系统调用。 针对这种情况 Unix 操作系统提供了一个优化的路径，用于将数据从页缓存区传输到 socket。在 Linux 中，是通过 sendfile 系统调用来完成的。Java提供了访问这个系统调用的方法：FileChannel.transferTo API。这种方式只需要一次拷贝：操作系统将数据直接从页缓存发送到网络上，在这个优化的路径中，只有最后一步将数据拷贝到网卡缓存中是需要的。
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/M331Ew.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/M331Ew.jpg)
 
 零拷贝是指内核空间和用户空间的交互的拷贝次数为零。这个技术其实非常普遍，Nginx 也是用的这种技术。
 
@@ -111,7 +111,7 @@ Kafka 实际上有个 offset 的概念，每个消息写进去，都有一个 of
 
 但是凡事总有意外，就是你有时候重启系统，碰到着急的，直接 kill 进程了，再重启。这会导致 consumer 有些消息处理了，但是没来得及提交 offset。重启之后，少数消息会再次消费一次。
 
-![Kafka](https://gitee.com/Esmusssein/picture/raw/master/uPic/7vBGuj.jpg)
+![Kafka](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/7vBGuj.jpg)
 
 上述图片即是一个重复消费的例子，消费者在消费玩offset=153后被重启，没有来得及将offset提交给Kafka。所以重启后再一次消费了offset=152和offset=153。
 
@@ -125,7 +125,7 @@ Kafka 实际上有个 offset 的概念，每个消息写进去，都有一个 of
 * 如果是redis，那么就不需要考虑，因为set的操作天然具有幂等性
 * 如果更复杂的话，我们在生产者发送数据时，加一个全局唯一的ID，当消费ID的时候，去redis里面查询是否消费过，如果消费过就忽略，保证不处理同样的消息
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/nwZKx4.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/nwZKx4.jpg)
 
 ### 可靠性传输
 
@@ -167,11 +167,11 @@ Kafka 实际上有个 offset 的概念，每个消息写进去，都有一个 of
 比如说我们建了一个 topic，有三个 partition。生产者在写的时候，其实可以指定一个 key，比如说我们指定了某个订单 id 作为 key，那么这个订单相关的数据，一定会被分发到同一个 partition 中去，而且这个 partition 中的数据一定是有顺序的。
 消费者从 partition 中取出来数据的时候，也一定是有顺序的。但是接着，我们在消费者里可能会需要**多个线程来并发处理消息**。因为如果消费者是单线程消费处理，而处理比较耗时的话，比如处理一条消息耗时几十 ms，那么 1 秒钟只能处理几十条消息，这吞吐量太低了。而多个线程并发跑的话，顺序可能就乱掉了。
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/XdEjT3.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/XdEjT3.jpg)
 
 #### 解决方法
 
 - 一个 topic，一个 partition，一个 consumer，内部单线程消费，单线程吞吐量太低。
 - 写 N 个内存 queue，具有相同 key 的数据都到同一个内存 queue；然后对于 N 个线程，每个线程分别消费一个内存 queue 即可，这样就能保证顺序性。
 
-![](https://gitee.com/Esmusssein/picture/raw/master/uPic/wAvtnx.jpg)
+![](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/wAvtnx.jpg)
