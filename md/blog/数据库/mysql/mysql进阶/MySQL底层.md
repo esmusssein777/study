@@ -107,9 +107,7 @@ write pos 和 checkpoint 之间的是“粉板”上还空着的部分，可以�
 
 因为最开始 MySQL 里并没有 InnoDB 引擎。MySQL 自带的引擎是 MyISAM，但是 MyISAM 没有 crash-safe 的能力，binlog 日志只能用于归档。而 InnoDB 是另一个公司 以插件形式引入 MySQL 的，既然只依靠 binlog 是没有 crash-safe 能力的，所以 InnoDB 使用另外一套日志系统——也就是 redo log 来实现 crash-safe 能力。
 
-这两种日志有以下三点不同。
-
-1. redo log 是 InnoDB 引擎特有的;binlog 是 MySQL 的 Server 层实现的，所有引擎都可以使用。
+这两种日志有以下三点不同。redo log 是 InnoDB 引擎特有的;binlog 是 MySQL 的 Server 层实现的，所有引擎都可以使用。
 
 2. redo log 是物理日志，记录的是“在某个数据页上做了什么修改”;binlog 是逻辑日志，记录的是这个语句的原始逻辑，比如“给 ID=2 这一行的 c 字段加 1 ”。
 
