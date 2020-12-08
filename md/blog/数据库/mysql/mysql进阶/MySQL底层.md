@@ -62,7 +62,9 @@ MySQL 从你输入的"select"这个关键字识别出来，这是一个查询语
 
 优化器是在表里面有多个索引的时候，决定使用哪个索引;或者在一个语句有多表关联 (join)的时候，决定各个表的连接顺序。比如你执行下面这样的语句，这个语句是执行 两个表的 join:
 
-```mysql> select * from t1 join t2 using(ID) where t1.c=10 and t2.d=20;```
+```
+mysql> select * from t1 join t2 using(ID) where t1.c=10 and t2.d=20;
+```
 
 既可以先从表 t1 里面取出 c=10 的记录的 ID 值，再根据 ID 值关联到表 t2，再判断 t2 里面 d 的值是否等于 20。
 
