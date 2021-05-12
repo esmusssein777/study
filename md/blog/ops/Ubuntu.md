@@ -7,6 +7,20 @@ sudo passwd root //配置密码
 su root
 ```
 
+## CD-ROM
+
+```
+sudo nano /etc/apt/sources.list
+```
+
+注释掉
+
+```
+deb cdrom:[Ubuntu-Server 16.04 LTS _Xenial Xerus_ - Release amd64 (20160420.3)]/ xenial main restricted
+```
+
+执行 cmd+O 然后 enter，之后 cmd+X
+
 ## ssh
 
 ```
