@@ -318,3 +318,254 @@ spec:
 ## Operator
 
 在 Kubernetes 中，管理“有状态应用”是一个比较复杂的过程，尤其是编写 Pod 模板的时候，总有一种“在 YAML 文件里编程序”的感觉，让人很不舒服。而在 Kubernetes 生态中，还有一个相对更加灵活和编程友好的管理“有状态应用”的解决方案，它就是: Operator。
+
+## PV & PVC
+
+PVC 可以理解为持久化存储的“接口”，它提供了对某种持久化存储的描述，但不提供具体的实现;而这个持久化存储的实现部分则由 PV 负责完成。
+
+在 Kubernetes 中，实际上存在着一个专门处理持久化存储的控制器，叫作 Volume Controller。PersistentVolumeController 会不断地查看当前每一个 PVC，是不是已经处于 Bound(已绑定)状态。如果不是，那它就会遍历所有的、可用的 PV，并尝试将其与这个“单身”的 PVC 进行绑定。
+
+而所谓将一个 PV 与 PVC 进行“绑定”，其实就是将这个 PV 对象的名字，填在了 PVC 对象的 spec.volumeName 字段上。所以，接下来 Kubernetes 只要获取到这个 PVC 对象，就一定能够找到它所绑定的 PV。
+
+所谓容器的 Volume，其实就是将一个宿主机上的目录，跟一个容器里的目录绑定挂载在了一起。
+
+而所谓的“持久化 Volume”，指的就是这个宿主机上的目录，具备“持久性”。即:这个目录里面的内容，既不会因为容器的删除而被清理掉，也不会跟当前的宿主机绑定。这样，当容器被重启或者在其他节点上重建出来之后，它仍然能够通过挂载这个 Volume，访问到这些内容。
+
+取决于你的 Volume 类型挂载操作也不同，大致的步骤是：
+
+这一步为虚拟机挂载远程磁盘的操作，对应的正是“两阶段处理”的第一阶段。在 Kubernetes 中，我们把这个阶段称为 Attach。
+
+这个将磁盘设备格式化并挂载到 Volume 宿主机目录的操作，对应的正是“两阶段处理”的第二个阶段，我们一般称为: Mount。
+
+而经过了“两阶段处理”，我们就得到了一个“持久化”的 Volume 宿主机目录。所以，接下来，kubelet 只要把这个 Volume 目录通过 CRI 里的 Mounts 参数，传递给 Docker，然后就可以为 Pod 里的容器挂载这个“持久化”的 Volume 了。
+
+具体的 Volume 插件的实现接口上，Kubernetes 分别给这两个阶段提供了两种不同的参数列表:
+
+* 对于“第一阶段”(Attach)，Kubernetes 提供的可用参数是 nodeName，即宿主机的名字。
+
+* 而对于“第二阶段”(Mount)，Kubernetes 提供的可用参数是 dir，即 Volume 的宿主机目录。
+
+<img src="/Users/guangzheng.li/Library/Application Support/typora-user-images/image-20210513210501032.png" alt="image-20210513210501032" style="zoom:25%;" />
+
+从图中我们可以看到，在这个体系中:
+
+* PVC 描述的，是 Pod 想要使用的持久化存储的属性，比如存储的大小、读写权限等。
+
+* PV 描述的，则是一个具体的 Volume 的属性，比如 Volume 的类型、挂载目录、远程存储 服务器地址等。
+
+* 而 StorageClass 的作用，则是充当 PV 的模板。并且，只有同属于一个 StorageClass 的 PV 和 PVC，才可以绑定在一起。
+
+当然，StorageClass 的另一个重要作用，是指定 PV 的 Provisioner(存储插件)。这时候，如果你的存储插件支持 Dynamic Provisioning 的话，Kubernetes 就可以自动为你创建 PV 了。
+
+## Networks
+
+![image-20210513212718912](/Users/guangzheng.li/Library/Application Support/typora-user-images/image-20210513212718912.png)
+
+在 Linux 中，能够起到虚拟交换机作用的网络设备，是网桥(Bridge)。它是一个工作在数据链路层(Data Link)的设备，主要功能是根据 MAC 地址学习来将数据包转发到网桥的不同端 口(Port)上。
+
+上面图片是docker的两个容器互相调用的过程，可以看到Docker 项目会默认在宿主机上创建一个名叫 docker0 的网桥，凡是连 接在 docker0 网桥上的容器，就可以通过它来进行通信。
+
+可是，我们又该如何把这些容器“连接”到 docker0 网桥上呢? 这时候，我们就需要使用一种名叫Veth Pair的虚拟设备了。
+
+Veth Pair 设备的特点是:它被创建出来后，总是以两张虚拟网卡(Veth Peer)的形式成对出现的。并且，从其中一个“网卡”发出的数据包，可以直接出现在与它对应的另一张“网卡”上，哪怕这两个“网卡”在不同的 Network Namespace 里。
+
+这就使得 Veth Pair 常常被用作连接不同 Network Namespace 的“网线”。
+
+上述图片 eth0 网卡和 veth9c02e56 虚拟网卡是 Veth Pair 的两端。熟悉了 docker0 网桥的工作方式，你就可以理解，在默认情况下，被限制在 Network Namespace 里的容器进程，实际上是通过 Veth Pair 设备 + 宿主机网桥的方式，实现了跟同 其他容器的数据交换。
+
+
+
+同样地，当一个容器试图连接到另外一个宿主机时，比如:ping 10.168.0.3，它发出的请求数据包，首先经过 docker0 网桥出现在宿主机上。然后根据宿主机的路由表里的直连路由规则 (10.168.0.0/24 via eth0))，对 10.168.0.3 的访问请求就会交给宿主机的 eth0 处理。
+
+![Max90T](https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/Max90T.png)
+
+在 Docker 的默认配置下，不同宿主机上的容器通过 IP 地址进行互相访问是根本做不到的。
+
+网络插件真正要做的事情，则是通过某种方法，把不同宿主机上的特殊设备连通，从而达到容器跨主机通信的目的。Kubernetes 是通过一个叫作 CNI 的接口，维护了一个单独的网桥来代替 docker0。这个网桥的名字就叫作:CNI 网桥，它在宿主机上的设备名称默认是:cni0。
+
+而  flannel.1 是CNI 插件，维护了 Ip 地址和 MAC 地址。
+
+比如，当 Node 2 启动并加入 Flannel 网络之后，在 Node 1(以及所有其他节点)上，flanneld 就会添加路由规则,这条规则的意思是:凡是发往 10.244.1.1/24 网段的 IP 包，都需要经过 flannel.1 设备发出，并且，它最后被发往的网关地址是:10.244.1.0/32。
+
+![image-20210513214925587](/Users/guangzheng.li/Library/Application Support/typora-user-images/image-20210513214925587.png)
+
+CNI 的设计思想，就是:Kubernetes 在启动 Infra 容器之后，就可以直接调用 CNI 网络插件，为这个 Infra 容器的 Network Namespace，配置符合预期的网络栈。
+
+初始化执行的 CNI 的基础可执行文件，按照功能可以分为三类:
+
+第一类，叫作 Main 插件，它是用来创建具体网络设备的二进制文件。比如，bridge(网桥设备)、ipvlan、loopback(lo 设备)、macvlan、ptp(Veth Pair 设备)，以及 vlan。
+
+Flannel、Weave 等项目，都属于“网桥”类型的 CNI 插件。所以在具体的实现中，它们往往会调用 bridge 这个二进制文件。
+
+第二类，叫作 IPAM(IP Address Management)插件，它是负责分配 IP 地址的二进制文 件。比如，dhcp，这个文件会向 DHCP 服务器发起请求;host-local，则会使用预先配置的 IP 地址段来进行分配。
+
+第三类，是由 CNI 社区维护的内置 CNI 插件。比如:flannel，就是专门为 Flannel 项目提供的 CNI 插件;tuning，是一个通过 sysctl 调整网络设备参数的二进制文件;portmap，是一个通 过 iptables 配置端口映射的二进制文件;bandwidth，是一个使用 Token Bucket Filter (TBF) 来进行限流的二进制文件。
+
+### NetworkPolicy
+
+不难发现，Kubernetes 的网络模型，以及前面这些网络方案的实现，都只关注容器之间网络的“连通”，却并不关心容器之间网络的“隔离”。在 Kubernetes 里，网络隔离能力的定义，是依靠一种专门的 API 对象来描述的，即: NetworkPolicy。
+
+Pod 可以接收来自任何发送方的请求;或者，向任何接收方发送请求。而如果你要对这个情况作出限制，就必须通过 NetworkPolicy 对象来指定。
+
+Kubernetes 网络插件对 Pod 进行隔离，其实是靠在宿主机上生成 NetworkPolicy 对应的 iptable 规则来实现的。
+
+iptables 只是一个操作 Linux 内核 Netfilter 子系统的“界面”。顾名思义，Netfilter 子系统的作用，就是 Linux 内核里挡在“网卡”和“用户态进程”之间的一道“防火墙”。它们的关系，可以用如下的示意图来表示:
+
+<img src="https://cdn.jsdelivr.net/gh/guangzhengli/ImgURL@master/uPic/vGsAbW.png" alt="vGsAbW" style="zoom:50%;" />
+
+可以看到，这幅示意图中，IP 包“一进一出”的两条路径上，有几个关键的“检查点”，它们正是 Netfilter 设置“防火墙”的地方。在 iptables 中，这些“检查点”被称为:链 (Chain)。这是因为这些“检查点”对应的 iptables 规则，是按照定义顺序依次进行匹配的。这些“检查点”的具体工作原理，可以用如下所示的示意图进行描述:
+
+![image-20210514113631383](/Users/guangzheng.li/Library/Application Support/typora-user-images/image-20210514113631383.png)
+
+可以看到，当一个 IP 包通过网卡进入主机之后，它就进入了 Netfilter 定义的流入路径(Input Path)里。
+
+在这个路径中，IP 包要经过路由表路由来决定下一步的去向。而在这次路由之前，Netfilter 设置了一个名叫 PREROUTING 的“检查点”。在 Linux 内核的实现里，所谓“检查点”实际上 就是内核网络协议栈代码里的 Hook(比如，在执行路由判断的代码之前，内核会先调用 PREROUTING 的 Hook)。
+
+而在经过路由之后，IP 包的去向就分为了两种:
+
+ 第一种，继续在本机处理;
+
+ 第二种，被转发到其他目的地。
+
+我们先说一下 IP 包的第一种去向。这时候，IP 包将继续向上层协议栈流动。在它进入传输层之前，Netfilter 会设置一个名叫 INPUT 的“检查点”。到这里，IP 包流入路径(Input Path) 结束。
+
+接下来，这个 IP 包通过传输层进入用户空间，交给用户进程处理。而处理完成后，用户进程会通过本机发出返回的 IP 包。这时候，这个 IP 包就进入了流出路径(Output Path)。
+
+此时，IP 包首先还是会经过主机的路由表进行路由。路由结束后，Netfilter 就会设置一个名叫 OUTPUT 的“检查点”。然后，在 OUTPUT 之后，再设置一个名叫 POSTROUTING“检查点”。
+
+你可能会觉得奇怪，为什么在流出路径结束后，Netfilter 会连着设置两个“检查点”呢? 这就要说到在流入路径里，路由判断后的第二种去向了。
+
+在这种情况下，这个 IP 包不会进入传输层，而是会继续在网络层流动，从而进入到转发路径 (Forward Path)。在转发路径中，Netfilter 会设置一个名叫 FORWARD 的“检查点”。
+
+而在 FORWARD“检查点”完成后，IP 包就会来到流出路径。而转发的 IP 包由于目的地已经确定，它就不会再经过路由，也自然不会经过 OUTPUT，而是会直接来到 POSTROUTING“检查点”。
+
+所以说，POSTROUTING 的作用，其实就是上述两条路径，最终汇聚在一起的“最终检查点”。
+
+需要注意的是，在有网桥参与的情况下，上述 Netfilter 设置“检查点”的流程，实际上也会出现在链路层(二层)，并且会跟我在上面讲述的网络层(三层)的流程有交互。
+
+这些链路层的“检查点”对应的操作界面叫作 ebtables。
+
+所以说，iptables 表的作用，就是在某个具体的“检查点”(比如 Output)上，按顺序执行几个不同的检查动作(比如，先执行 nat，再执行 filter)。
+
+在理解了 iptables 的工作原理之后，我们再回到 NetworkPolicy 上来，在 iptables 设置满足 NetworkPolicy 的规则，不满足的话就会被拒绝掉，从而实现对容器的隔离。
+
+## 服务发现
+
+Kubernetes 之所以需要 Service，一方面是因为 Pod 的 IP 不是固定的，另一方面则是因为一 组 Pod 实例之间总会有负载均衡的需求。
+
+```
+apiVersion: v1
+kind: Service
+metadata:
+  name: hostnames
+spec:
+  selector:
+    app: hostnames
+  ports:
+  - name: default
+    protocol: TCP
+		port: 80
+		targetPort: 9376
+```
+
+这个 Service 的例子，相信你不会陌生。其中，我使用了 selector 字段来声明这个 Service 只代理携带了 app=hostnames 标签的 Pod。并且，这个 Service 的 80 端口，代理的是 Pod 的 9376 端口。
+
+Deployment 执行后会生成 Service 的VIP地址，这个 VIP 地址是 Kubernetes 自动为 Service 分配的。通过三次连续不断地访问 Service 的 VIP 地址和代理端口 80，它就为我们依次返回了三个 Pod 的 hostname。这也正印证了 Service 提供的是 Round Robin 方式的负载均衡。对于这种方式，我们称为: ClusterIP 模式的 Service。
+
+Service 是由 kube-proxy 组件，加上 iptables 来共同实现的。通过设置一组 iptables 规则，实现负载均衡。
+
+iptables 规则的匹配是从上到下逐条进行的，所以为了保证上述三条规则每条被选中的概率都相同，我们应该将它们的 probability 字段的值分别设置为 1/3(0.333...)、1/2 和 1。
+
+这么设置的原理很简单:第一条规则被选中的概率就是 1/3;而如果第一条规则没有被选中，那 么这时候就只剩下两条规则了，所以第二条规则的 probability 就必须设置为 1/2;类似地，最 后一条就必须设置为 1。
+
+这样，访问 Service VIP 的 IP 包经过上述 iptables 处理之后，就已经变成了访问具体某一个后端 Pod 的 IP 包了。不难理解，这些 Endpoints 对应的 iptables 规则，正是 kube-proxy 通过监听 Pod 的变化事件，在宿主机上生成并维护的。
+
+以上，就是 Service 最基本的工作原理。Kubernetes 的 kube-proxy 还支持一种叫作 IPVS 的模式。
+
+kube-proxy 通过 iptables 处理 Service 的过程，其实 需要在宿主机上设置相当多的 iptables 规则。而且，kube-proxy 还需要在控制循环里不断地刷新这些规则来确保它们始终是正确的。
+
+不难想到，当你的宿主机上有大量 Pod 的时候，成百上千条 iptables 规则不断地被刷新，会大量占用该宿主机的 CPU 资源，甚至会让宿主机“卡”在这个过程中。所以说，一直以来，基于 iptables 的 Service 实现，都是制约 Kubernetes 项目承载更多量级的 Pod 的主要障碍。
+
+IPVS 模式的工作原理，其实跟 iptables 模式类似。当我们创建了前面的 Service 之后，kube- proxy 首先会在宿主机上创建一个虚拟网卡(叫作:kube-ipvs0)，并为它分配 Service VIP 作为 IP 地址。kube-proxy 就会通过 Linux 的 IPVS 模块，为这个 IP 地址设置三个 IPVS 虚拟主机，并设置这三个虚拟主机之间使用轮询模式 (rr) 来作为负载均衡策略。而 IPVS 模式的 Service，就是解决这个问题的一个行之有效的方法。
+
+而相比于 iptables，IPVS 在内核中的实现其实也是基于 Netfilter 的 NAT 模式，所以在转发这 一层上，理论上 IPVS 并没有显著的性能提升。但是，IPVS 并不需要在宿主机上为每个 Pod 设 置 iptables 规则，而是把对这些“规则”的处理放到了内核态，从而极大地降低了维护这些规则的代价。
+
+## Ingress
+
+从外部访问 Service 有三种方式(NodePort、LoadBalancer 和 External Name)
+
+但是每个 Service 都要有一个负载均衡服务，所以这个做法实际上既浪费成本又高。作为用户，我其实更希望看到 Kubernetes 为我内置一个全局的负载均衡器。然后，通过我访问的 URL，把请求转发给不同的后端 Service。
+
+这种全局的、为了代理不同后端 Service 而设置的负载均衡服务，就是 Kubernetes 里的 Ingress 服务。
+
+所谓 Ingress 对象，其实就是 Kubernetes 项目对“反向代理”的一种抽象。一个 Ingress 对象的主要内容，实际上就是一个“反向代理”服务(比如:Nginx)的配置文件 的描述。而这个代理服务对应的转发规则，就是 IngressRule。
+
+这就是为什么在每条 IngressRule 里，需要有一个 host 字段来作为这条 IngressRule 的入口， 然后还需要有一系列 path 字段来声明具体的转发策略。而有了 Ingress 这样一个统一的抽象，Kubernetes 的用户就无需关心 Ingress 的具体细节了。
+
+在实际的使用中，你只需要从社区里选择一个具体的 Ingress Controller，把它部署在 Kubernetes 集群里即可。
+
+选择一个 Nginx Ingress Controller 为你提供的服务，其实是一个可以根据 Ingress 对象和被代理后端 Service 的变化，来自动进行更新的 Nginx 负载均衡器。
+
+
+
+目前，Ingress 只能工作在七层，而 Service 只能工作在四层。所以当你想要在 Kubernetes 里为应用进行 TLS 配置等 HTTP 相关的操作时，都必须通过 Ingress 来进行。
+
+当然，正如同很多负载均衡项目可以同时提供七层和四层代理一样，将来 Ingress 的进化中，也会加入四层代理的能力。这样，一个比较完善的“反向代理”机制就比较成熟了。
+
+而 Kubernetes 提出 Ingress 概念的原因其实也非常容易理解，有了 Ingress 这个抽象，用户就可以根据自己的需求来自由选择 Ingress Controller。比如，如果你的应用对代理服务的中断非常敏感，那么你就应该考虑选择类似于 Traefik 这样支持“热加载”的 Ingress Controller 实现。
+
+## 资源模型
+
+在 Kubernetes 中，像 CPU 这样的资源被称作“可压缩资源”(compressible resources)。 它的典型特点是，当可压缩资源不足时，Pod 只会“饥饿”，但不会退出。
+
+而像内存这样的资源，则被称作“不可压缩资源(compressible resources)。当不可压缩资源不足时，Pod 就会因为 OOM(Out-Of-Memory)被内核杀掉。
+
+而由于 Pod 可以由多个 Container 组成，所以 CPU 和内存资源的限额，是要配置在每个 Container 的定义上的。这样，Pod 整体的资源配置，就由这些 Container 的配置值累加得到。
+
+其中，Kubernetes 里为 CPU 设置的单位是“CPU 的个数”。比如，cpu=1 指的就是，这个 Pod 的 CPU 限额是 1 个 CPU。Kubernetes 允许你将 CPU 限额设置为分数，CPU limits 的值设置为 500m。所谓 500m，指的就是 500 millicpu，也就是 0.5 个 CPU 的意思。这样，这个 Pod 就会被分配到 1 个 CPU 一半的计算能力。
+
+Kubernetes 里 Pod 的 CPU 和内存资源，实际上还要分为 limits 和 requests 两种情况，这两者的区别其实非常简单:在调度的时候，kube-scheduler 只会按照 requests 的值进行计算。而在真正设置 Cgroups 限制的时候，kubelet 则会按照 limits 的值来进行设置。
+
+容器化作业在提交时所设置的资源边界，并不一定是调度系统所必须严格遵守的，这是因为在实际场景中，大多数作业使用到的资源其实远小于它所请求的资源限额。
+
+### QoS
+
+在理解了 Kubernetes 资源模型的设计之后，我再来和你谈谈 Kubernetes 里的 QoS 模型。在 Kubernetes 中，不同的 requests 和 limits 的设置方式，其实会将这个 Pod 划分到不同的 QoS 级别当中。
+
+* 当 Pod 里的每一个 Container 都同时设置了 requests 和 limits，并且 requests 和 limits 值相等的时候，这个 Pod 就属于 Guaranteed 类别
+
+* 而当 Pod 不满足 Guaranteed 的条件，但至少有一个 Container 设置了 requests。那么这 个 Pod 就会被划分到 Burstable 类别。
+* 而如果一个 Pod 既没有设置 requests，也没有设置 limits，那么它的 QoS 类别就是 BestEffort
+
+实际上，QoS 划分的主要应用场景，是当宿主机资源紧张的时候，kubelet 对 Pod 进行 Eviction (即资源回收)时需要用到的。在这个配置中，Eviction 在 Kubernetes 里其实分为 Soft 和 Hard 两种模式。
+
+而当 Eviction 发生的时候，kubelet 具体会挑选哪些 Pod 进行删除操作，就需要参考这些 Pod 的 QoS 类别了。
+
+* 首当其冲的，自然是 BestEffort 类别的 Pod。
+
+* 其次，是属于 Burstable 类别、并且发生“饥饿”的资源使用量已经超出了 requests 的 Pod。
+
+* 最后，才是 Guaranteed 类别。并且，Kubernetes 会保证只有当 Guaranteed 类别的 Pod 的资源使用量超过了其 limits 的限制，或者宿主机本身正处于 Memory Pressure 状态时， Guaranteed 的 Pod 才可能被选中进行 Eviction 操作。
+
+在理解了 Kubernetes 里的 QoS 类别的设计之后，我再来为你讲解一下Kubernetes 里一个非常有用的特性:cpuset 的设置。我们知道，在使用容器的时候，你可以通过设置 cpuset 把容器绑定到某个 CPU 的核上，而不 是像 cpushare 那样共享 CPU 的计算能力。
+
+这种情况下，由于操作系统在 CPU 之间进行上下文切换的次数大大减少，容器里应用的性能会得到大幅提升。事实上，cpuset 方式，是生产环境里部署在线应用类型的 Pod 时，非常常用的一种方式。
+
+### 调度
+
+![image-20210514154009122](/Users/guangzheng.li/Library/Application Support/typora-user-images/image-20210514154009122.png)
+
+可以看到，Kubernetes 的调度器的核心，实际上就是两个相互独立的控制循环。
+
+其中，第一个控制循环，我们可以称之为 Informer Path。它的主要目的，是启动一系列 Informer，用来监听(Watch)Etcd 中 Pod、Node、Service 等与调度相关的 API 对象的变化。比如，当一个待调度 Pod(即:它的 nodeName 字段是空的)被创建出来之后，调度器就会通过 Pod Informer 的 Handler，将这个待调度 Pod 添加进调度队列。
+
+在默认情况下，Kubernetes 的调度队列是一个 PriorityQueue(优先级队列)，并且当某些集群信息发生变化的时候，调度器还会对调度队列里的内容进行一些特殊操作。这里的设计，主要是出于调度优先级和抢占的考虑。
+
+此外，Kubernetes 的默认调度器还要负责对调度器缓存(即:scheduler cache)进行更新。 事实上，Kubernetes 调度部分进行性能优化的一个最根本原则，就是尽最大可能将集群信息 Cache 化，以便从根本上提高 Predicate 和 Priority 调度算法的执行效率。
+
+而第二个控制循环，是调度器负责 Pod 调度的主循环，我们可以称之为 Scheduling Path。
+
+Scheduling Path 的主要逻辑，就是不断地从调度队列里出队一个 Pod。然后，调用 Predicates 算法进行“过滤”。这一步“过滤”得到的一组 Node，就是所有可以运行这个 Pod 的宿主机列表。当然，Predicates 算法需要的 Node 信息，都是从 Scheduler Cache 里 直接拿到的，这是调度器保证算法执行效率的主要手段之一。
+
+接下来，调度器就会再调用 Priorities 算法为上述列表里的 Node 打分，分数从 0 到 10。得分最高的 Node，就会作为这次调度的结果。最后进行 Bind。
+

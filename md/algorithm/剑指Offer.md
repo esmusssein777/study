@@ -487,4 +487,3 @@ private boolean verify(int[] seq, int left, int right) {
         return max;
     }
 
-
